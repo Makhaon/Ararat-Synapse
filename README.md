@@ -1,8 +1,7 @@
 # Ararat-Synapse
 This is a clone of an SVN repository at svn://svn.code.sf.net/p/synalist/code. It had been cloned by http://svn2github.com/ , but the service was since closed. Please read a closing note on my blog post: http://piotr.gabryjeluk.pl/blog:closing-svn2github . If you want to continue synchronizing this repo, look at https://github.com/gabrys/svn2github 
 
-Fixes:
-- Improved version of the great Synapse library.
+Improved version of the great Synapse library, fixes:
 - Added Disconnected processing and property
 - Change variables scope mainly to private from protected
 - SockCheck and ExceptCheck added, it works in Linux more stable
