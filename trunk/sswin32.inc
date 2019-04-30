@@ -453,7 +453,7 @@ type
 {$ifdef WIN64}
     s_proto: PAnsiChar;
     s_port: Smallint;
-{$else} 
+{$else}
     s_port: Smallint;
     s_proto: PAnsiChar;
 {$endif}
@@ -987,12 +987,12 @@ function RecvFrom(s: TSocket; Buf: TMemory; len, flags: Integer; var from: TVarS
 function Accept(s: TSocket; var addr: TVarSin): TSocket;
 
 function IsNewApi(Family: integer): Boolean;
-function SetVarSin(var Sin: TVarSin; IP, Port: AnsiString; Family, SockProtocol, SockType: integer; PreferIP4: Boolean): integer;
+function SetVarSin(var Sin: TVarSin; const IP, Port: AnsiString; Family, SockProtocol, SockType: integer; PreferIP4: Boolean): integer;
 function GetSinIP(Sin: TVarSin): AnsiString;
 function GetSinPort(Sin: TVarSin): Integer;
-procedure ResolveNameToIP(Name: AnsiString;  Family, SockProtocol, SockType: integer; const IPList: TStrings);
-function ResolveIPToName(IP: AnsiString; Family, SockProtocol, SockType: integer): AnsiString;
-function ResolvePort(Port: AnsiString; Family, SockProtocol, SockType: integer): Word;
+procedure ResolveNameToIP(const Name: AnsiString;  Family, SockProtocol, SockType: integer; const IPList: TStrings);
+function ResolveIPToName(const IP: AnsiString; Family, SockProtocol, SockType: integer): AnsiString;
+function ResolvePort(const Port: AnsiString; Family, SockProtocol, SockType: integer): Word;
 
 {==============================================================================}
 implementation
@@ -1181,7 +1181,8 @@ begin
     Result := (Family = AF_INET6) and SockWship6Api;
 end;
 
-function SetVarSin(var Sin: TVarSin; IP, Port: AnsiString; Family, SockProtocol, SockType: integer; PreferIP4: Boolean): integer;
+function SetVarSin(var Sin: TVarSin; const IP, Port: AnsiString; Family,
+    SockProtocol, SockType: integer; PreferIP4: Boolean): integer;
 type
   pu_long = ^u_long;
 var
@@ -1342,7 +1343,8 @@ begin
     Result := synsock.ntohs(Sin.sin_port);
 end;
 
-procedure ResolveNameToIP(Name: AnsiString; Family, SockProtocol, SockType: integer; const IPList: TStrings);
+procedure ResolveNameToIP(const Name: AnsiString; Family, SockProtocol,
+    SockType: integer; const IPList: TStrings);
 type
   TaPInAddr = array[0..250] of PInAddr;
   PaPInAddr = ^TaPInAddr;
@@ -1432,7 +1434,8 @@ begin
     IPList.Add(cAnyHost);
 end;
 
-function ResolvePort(Port: AnsiString; Family, SockProtocol, SockType: integer): Word;
+function ResolvePort(const Port: AnsiString; Family, SockProtocol, SockType:
+    integer): Word;
 var
   ProtoEnt: PProtoEnt;
   ServEnt: PServEnt;
@@ -1481,7 +1484,8 @@ begin
   end;
 end;
 
-function ResolveIPToName(IP: AnsiString; Family, SockProtocol, SockType: integer): AnsiString;
+function ResolveIPToName(const IP: AnsiString; Family, SockProtocol, SockType:
+    integer): AnsiString;
 var
   Hints: TAddrInfo;
   Addr: PAddrInfo;

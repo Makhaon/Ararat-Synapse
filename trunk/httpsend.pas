@@ -69,7 +69,7 @@ interface
 
 uses
   SysUtils, Classes,
-  blcksock, synautil, synaip, synacode, synsock;
+  blcksock, synautil, synabyte, synaip, synacode, synsock;
 
 const
   cHttpProtocol = '80';
@@ -81,6 +81,9 @@ type
 
   {:abstract(Implementation of HTTP protocol.)}
   THTTPSend = class(TSynaClient)
+  private
+    FConnectionTimeOut: Integer;
+    FIgnoreBody: Boolean;
   protected
     FSock: TTCPBlockSocket;
     FTransferEncoding: TTransferEncoding;
@@ -110,7 +113,7 @@ type
     function ReadIdentity(Size: Integer): Boolean; virtual;
     function ReadChunked: Boolean; virtual;
     procedure ParseCookies;
-    function PrepareHeaders: AnsiString;
+    function PrepareHeaders: String;
     function InternalDoConnect(needssl: Boolean): Boolean;
     function InternalConnect(needssl: Boolean): Boolean;
   public
@@ -223,6 +226,11 @@ type
     {:Allows to switch off port number in 'Host:' HTTP header. By default @TRUE.
      Some buggy servers do not like port informations in this header.}
     property AddPortNumberToHost: Boolean read FAddPortNumberToHost write FAddPortNumberToHost;
+
+    property ConnectionTimeOut: Integer read FConnectionTimeOut
+      write FConnectionTimeOut;
+
+    property IgnoreBody: Boolean read FIgnoreBody write FIgnoreBody;
   end;
 
 {:A very useful function, and example of use can be found in the THTTPSend
@@ -296,6 +304,8 @@ begin
   FUploadSize := 0;
   FAddPortNumberToHost := true;
   FKeepAliveTimeout := 300;
+
+  FConnectionTimeOut := 0;
   Clear;
 end;
 
@@ -329,13 +339,13 @@ begin
     FResultString := '';
 end;
 
-function THTTPSend.PrepareHeaders: AnsiString;
+function THTTPSend.PrepareHeaders: String;
 begin
   if FProtocol = '0.9' then
     Result := FHeaders[0] + CRLF
   else
 {$IFNDEF MSWINDOWS}
-    Result := {$IFDEF UNICODE}AnsiString{$ENDIF}(AdjustLineBreaks(FHeaders.Text, tlbsCRLF));
+    Result := {$IFDEF UNICODE}TMarshal.AsAnsi{$ENDIF}(AdjustLineBreaks(FHeaders.Text, tlbsCRLF));
 {$ELSE}
     Result := FHeaders.Text;
 {$ENDIF}
@@ -346,6 +356,8 @@ begin
   Result := False;
   FSock.CloseSocket;
   FSock.Bind(FIPInterface, cAnyPort);
+  FSock.ConnectionTimeOut := FConnectionTimeOut;
+
   if FSock.LastError <> 0 then
     Exit;
   FSock.Connect(FTargetHost, FTargetPort);
@@ -385,7 +397,7 @@ var
   ToClose: Boolean;
   Size: Integer;
   Prot, User, Pass, Host, Port, Path, Para, URI: string;
-  s, su: AnsiString;
+  s, su: String;
   HttpTunnel: Boolean;
   n: integer;
   pp: string;
@@ -469,7 +481,7 @@ begin
   else
     FHeaders.Insert(0, pp + 'Connection: close');
   { set target servers/proxy, authorizations, etc... }
-  if User <> '' then
+  if (User <> '') or (Pass <> '') then
     FHeaders.Insert(0, 'Authorization: Basic ' + EncodeBase64(User + ':' + Pass));
   if UsingProxy and (FProxyUser <> '') then
     FHeaders.Insert(0, 'Proxy-Authorization: Basic ' +
@@ -671,7 +683,7 @@ begin
         Result := ReadChunked;
     end;
 
-  FDocument.Seek(0, soFromBeginning);
+  FDocument.Position := 0;
   if ToClose then
   begin
     FSock.CloseSocket;
@@ -683,7 +695,7 @@ end;
 
 function THTTPSend.ReadUnknown: Boolean;
 var
-  s: ansistring;
+  s: TSynaBytes;
 begin
   Result := false;
   repeat
@@ -713,7 +725,7 @@ end;
 
 function THTTPSend.ReadChunked: Boolean;
 var
-  s: ansistring;
+  s: string;
   Size: Integer;
 begin
   repeat
@@ -765,7 +777,8 @@ begin
   try
     Result := HTTP.HTTPMethod('GET', URL);
     if Result then
-      Response.LoadFromStream(HTTP.Document);
+      Response.LoadFromStream(HTTP.Document
+       {$IFDEF UNICODE}, TEncoding.ANSI{$ENDIF});
   finally
     HTTP.Free;
   end;
@@ -780,7 +793,7 @@ begin
     Result := HTTP.HTTPMethod('GET', URL);
     if Result then
     begin
-      Response.Seek(0, soFromBeginning);
+      Response.Position := 0;
       Response.CopyFrom(HTTP.Document, 0);
     end;
   finally
@@ -800,7 +813,7 @@ begin
     Data.Size := 0;
     if Result then
     begin
-      Data.Seek(0, soFromBeginning);
+      Data.Position := 0;
       Data.CopyFrom(HTTP.Document, 0);
     end;
   finally

@@ -749,6 +749,9 @@ begin
       ASN1_NULL:
         s := ASNObject(MibToID(SNMPMib.OID), ASN1_OBJID) +
           ASNObject('', ASN1_NULL);
+      ASN1_COUNTER64:
+        s := ASNObject(MibToID(SNMPMib.OID), ASN1_OBJID) +
+          ASNObject(ASNEncInt(StrToInt64Def(SNMPMib.Value, 0)), SNMPMib.ValueType);
     else
       s := ASNObject(MibToID(SNMPMib.OID), ASN1_OBJID) +
         ASNObject(SNMPMib.Value, SNMPMib.ValueType);

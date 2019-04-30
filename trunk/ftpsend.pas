@@ -142,16 +142,16 @@ type
     YearTime: string;
     Year: string;
     Hours: string;
-    HoursModif: Ansistring;
+    HoursModif: string;
     Minutes: string;
     Seconds: string;
-    Size: Ansistring;
-    Permissions: Ansistring;
+    Size: string;
+    Permissions: string;
     DirFlag: string;
     function GetListItem(Index: integer): TFTPListRec; virtual;
     function ParseEPLF(Value: string): Boolean; virtual;
     procedure ClearStore; virtual;
-    function ParseByMask(Value, NextValue, Mask: ansistring): Integer; virtual;
+    function ParseByMask(Value, NextValue, Mask: string): Integer; virtual;
     function CheckValues: Boolean; virtual;
     procedure FillRecord(const Value: TFTPListRec); virtual;
   public
@@ -517,7 +517,7 @@ end;
 
 function TFTPSend.ReadResult: Integer;
 var
-  s, c: AnsiString;
+  s, c: string;
 begin
   FFullResult.Clear;
   c := '';
@@ -827,7 +827,7 @@ end;
 procedure TFTPSend.ParseRemoteEPSV(Value: string);
 var
   n: integer;
-  s, v: AnsiString;
+  s, v: string;
 begin
   s := SeparateRight(Value, '(');
   s := Trim(SeparateLeft(s, ')'));
@@ -1349,11 +1349,11 @@ begin
   DirFlag := '';
 end;
 
-function TFTPList.ParseByMask(Value, NextValue, Mask: AnsiString): Integer;
+function TFTPList.ParseByMask(Value, NextValue, Mask: string): Integer;
 var
   Ivalue, IMask: integer;
-  MaskC, LastMaskC: AnsiChar;
-  c: AnsiChar;
+  MaskC, LastMaskC: char;
+  c: char;
   s: string;
 begin
   ClearStore;

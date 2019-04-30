@@ -59,7 +59,7 @@ unit sntpsend;
 interface
 
 uses
-  SysUtils,
+  SysUtils, synabyte,
   synsock, blcksock, synautil;
 
 const
@@ -101,10 +101,10 @@ type
     FMaxSyncDiff: double;
     FSyncTime: Boolean;
     FSock: TUDPBlockSocket;
-    FBuffer: AnsiString;
+    FBuffer: TSynaBytes;
     FLi, FVn, Fmode : byte;
-    function StrToNTP(const Value: AnsiString): TNtp;
-    function NTPtoStr(const Value: Tntp): AnsiString;
+    function StrToNTP(const Value: TSynaBytes): TNtp;
+    function NTPtoStr(const Value: Tntp): TSynaBytes;
     procedure ClearNTP(var Value: Tntp);
   public
     constructor Create;
@@ -175,7 +175,7 @@ begin
   inherited Destroy;
 end;
 
-function TSNTPSend.StrToNTP(const Value: AnsiString): TNtp;
+function TSNTPSend.StrToNTP(const Value: TSynaBytes): TNtp;
 begin
   if length(FBuffer) >= SizeOf(Result) then
   begin
@@ -198,13 +198,21 @@ begin
 
 end;
 
-function TSNTPSend.NTPtoStr(const Value: Tntp): AnsiString;
+function TSNTPSend.NTPtoStr(const Value: Tntp): TSynaBytes;
 begin
+{$IFDEF UNICODE}
+  Result.Length := 4;
+  Result.Bytes[0] := TSynaByte(Value.mode);
+  Result.Bytes[1] := TSynaByte(Value.stratum);
+  Result.Bytes[2] := TSynaByte(Value.poll);
+  Result.Bytes[3] := TSynaByte(Value.precision);
+{$ELSE}
   SetLength(Result, 4);
-  Result[1] := AnsiChar(Value.mode);
-  Result[2] := AnsiChar(Value.stratum);
-  Result[3] := AnsiChar(Value.poll);
-  Result[4] := AnsiChar(Value.precision);
+  Result[1] := TSynaByte(Value.mode);
+  Result[2] := TSynaByte(Value.stratum);
+  Result[3] := TSynaByte(Value.poll);
+  Result[4] := TSynaByte(Value.precision);
+{$ENDIF}
   Result := Result + CodeLongInt(Value.RootDelay);
   Result := Result + CodeLongInt(Value.RootDisperson);
   Result := Result + CodeLongInt(Value.RefID);

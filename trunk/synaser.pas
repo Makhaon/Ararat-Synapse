@@ -45,8 +45,8 @@
 
 {: @abstract(Serial port communication library)
 This unit contains a class that implements serial port communication 
- for Windows, Linux, Unix or MacOSx. This class provides numerous methods with 
- same name and functionality as methods of the Ararat Synapse TCP/IP library.
+ for Windows, Linux, Unix, MacOSx and Ultibo. This class provides numerous methods
+ with same name and functionality as methods of the Ararat Synapse TCP/IP library.
 
 The following is a small example how establish a connection by modem (in this
 case with my USB modem):
@@ -101,14 +101,21 @@ interface
 
 uses
 {$IFNDEF MSWINDOWS}
-  {$IFNDEF NO_LIBC}
-  Libc,
-  KernelIoctl,
+  {$IFDEF ULTIBO}
+    GlobalConst,
+    GlobalConfig,
+    Devices,
+    Serial,
   {$ELSE}
-  termio, baseunix, unix,
-  {$ENDIF}
-  {$IFNDEF FPC}
-  Types,
+    {$IFNDEF NO_LIBC}
+    Libc,
+    KernelIoctl,
+    {$ELSE}
+    termio, baseunix, unix,
+    {$ENDIF}
+    {$IFNDEF FPC}
+    Types,
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
   Windows, registry,
@@ -171,9 +178,11 @@ const
   SB2 = 2;
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}  
 const
   INVALID_HANDLE_VALUE = THandle(-1);
   CS7fix = $0000020;
+{$ENDIF}
 
 type
   TDCB = record
@@ -195,6 +204,7 @@ type
   end;
   PDCB = ^TDCB;
 
+{$IFNDEF ULTIBO}  
 const
 {$IFDEF UNIX}
   {$IFDEF BSD}
@@ -243,6 +253,7 @@ const
   {$ENDIF}
 {$ENDIF}
     );
+{$ENDIF}
 {$ENDIF}
 
 {$IFDEF BSD}
@@ -319,6 +330,10 @@ type
     function ReadTxEmpty(PortAddr: Word): Boolean; virtual;
  {$ENDIF}
 {$ENDIF}
+{$IFDEF ULTIBO}
+    FSerialDevice: PSerialDevice;
+    procedure SetSizeSendBuffer(size: integer); virtual;
+{$ENDIF}
     procedure SetSizeRecvBuffer(size: integer); virtual;
     function GetDSR: Boolean; virtual;
     procedure SetDTRF(Value: Boolean); virtual;
@@ -374,7 +389,7 @@ type
      style (COM2), or in Linux style (/dev/ttyS1). When you use windows style
      in Linux, then it will be converted to Linux name. And vice versa! However
      you can specify any device name! (other device names then standart is not
-     converted!)
+     converted!). In Ultibo you must use a serial device name (eg Serial0).
 
      After successfull connection the DTR signal is set (if you not set hardware
      handshake, then the RTS signal is set, too!)
@@ -397,11 +412,11 @@ type
     procedure Connect(comport: string); virtual;
 
     {:Set communication parameters from the DCB structure (the DCB structure is
-     simulated under Linux).}
+     simulated under Linux and Ultibo).}
     procedure SetCommState; virtual;
 
     {:Read communication parameters into the DCB structure (DCB structure is
-     simulated under Linux).}
+     simulated under Linux and Ultibo).}
     procedure GetCommState; virtual;
 
     {:Sends Length bytes of data from Buffer through the connected port.}
@@ -483,7 +498,7 @@ type
      This method serves for line protocol implementation and uses its own
      buffers to maximize performance. Therefore do NOT use this method with the
      @link(RecvBuffer) method to receive data as it may cause data loss.}
-    function Recvstring(timeout: integer): AnsiString; virtual;
+    function RecvString(timeout: integer): AnsiString; virtual;
 
     {:Waits until four data bytes are received which is returned as the function
      integer result. If no data is received within the Timeout (in milliseconds) period,
@@ -672,9 +687,16 @@ type
      limitation is not used.}
     property MaxBandwidth: Integer Write SetBandwidth;
 
-    {:Size of the Windows internal receive buffer. Default value is usually
-     4096 bytes. Note: Valid only in Windows versions!}
+    {:Size of the Windows and Ultibo internal receive buffer. Default value is
+      usually 4096 or 2048 bytes respectively. Note: Valid only in Windows and
+      Ultibo versions!}
     property SizeRecvBuffer: integer read FRecvBuffer write SetSizeRecvBuffer;
+    
+{$IFDEF ULTIBO}
+    {:Size of the Ultibo internal transmit buffer. Default value is usually
+      2048 bytes. Note: Valid only in Ultibo version!}
+    property SizeSendBuffer: integer read FSendBuffer write SetSizeSendBuffer;
+{$ENDIF}    
   published
     {:Returns the descriptive text associated with ErrorCode. You need this
      method only in special cases. Description of LastError is now accessible
@@ -741,7 +763,7 @@ type
     property InterPacketTimeout: Boolean read FInterPacketTimeout Write FInterPacketTimeout;
   end;
 
-{:Returns list of existing computer serial ports. Working properly only in Windows!}
+{:Returns list of existing computer serial ports. Working properly only in Windows and Ultibo!}
 function GetSerialPortNames: string;
 
 implementation
@@ -767,7 +789,12 @@ begin
   FNextRecv := 0;
   FConvertLineEnd := False;
   SetSynaError(sOK);
+  {$IFDEF ULTIBO}
+  FRecvBuffer := SERIAL_RECEIVE_DEPTH_DEFAULT;
+  FSendBuffer := SERIAL_TRANSMIT_DEPTH_DEFAULT;
+  {$ELSE}
   FRecvBuffer := 4096;
+  {$ENDIF}
   FLastCR := False;
   FLastLF := False;
   FAtTimeout := 1000;
@@ -792,7 +819,12 @@ begin
     Purge;
     RTS := False;
     DTR := False;
+    {$IFDEF ULTIBO}
+    SerialDeviceClose(FSerialDevice);
+    FSerialDevice := nil;
+    {$ELSE}
     FileClose(FHandle);
+    {$ENDIF}
   end;
   if InstanceActive then
   begin
@@ -844,8 +876,13 @@ begin
   FComNr := PortIsClosed;
   if pos('COM', uppercase(Value)) = 1 then
     FComNr := StrToIntdef(copy(Value, 4, Length(Value) - 3), PortIsClosed + 1) - 1;
+  {$IFNDEF ULTIBO}
   if pos('/DEV/TTYS', uppercase(Value)) = 1 then
     FComNr := StrToIntdef(copy(Value, 10, Length(Value) - 9), PortIsClosed - 1);
+  {$ELSE} 
+  if pos(uppercase(SERIAL_NAME_PREFIX), uppercase(Value)) = 1 then
+    FComNr := StrToIntdef(copy(Value, Length(SERIAL_NAME_PREFIX) + 1, Length(Value) - Length(SERIAL_NAME_PREFIX)), PortIsClosed);
+  {$ENDIF}
 end;
 
 procedure TBlockSerial.SetBandwidth(Value: Integer);
@@ -913,6 +950,10 @@ procedure TBlockSerial.Connect(comport: string);
 var
   CommTimeouts: TCommTimeouts;
 {$ENDIF}
+{$IFDEF ULTIBO}
+var
+  ResultCode: LongWord;
+{$ENDIF}
 begin
   // Is this TBlockSerial Instance already busy?
   if InstanceActive then           {HGJ}
@@ -926,13 +967,18 @@ begin
 {$IFDEF MSWINDOWS}
   SetLastError (sOK);
 {$ELSE}
-  {$IFNDEF FPC}
+  {$IFDEF ULTIBO}
   SetLastError (sOK);
   {$ELSE}
-  fpSetErrno(sOK);
+    {$IFNDEF FPC}
+    SetLastError (sOK);
+    {$ELSE}
+    fpSetErrno(sOK);
+  {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   if FComNr <> PortIsClosed then
     FDevice := '/dev/ttyS' + IntToStr(FComNr);
   // Comport already owned by another process?          {HGJ}
@@ -942,11 +988,11 @@ begin
       RaiseSynaError(ErrAlreadyOwned);
       Exit;
     end;
-{$IFNDEF FPC}
+  {$IFNDEF FPC}
   FHandle := THandle(Libc.open(pchar(FDevice), O_RDWR or O_SYNC));
-{$ELSE}
+  {$ELSE}
   FHandle := THandle(fpOpen(FDevice, O_RDWR or O_SYNC));
-{$ENDIF}
+  {$ENDIF}
   if FHandle = INVALID_HANDLE_VALUE then  //because THandle is not integer on all platforms!
     SerialCheck(-1)
   else
@@ -959,6 +1005,33 @@ begin
   ExceptCheck;
   if FLastError <> sOK then
     Exit;
+{$ELSE}
+  if FComNr <> PortIsClosed then
+    FDevice := SERIAL_NAME_PREFIX + IntToStr(FComNr);
+    
+  // Find device  
+  FSerialDevice := SerialDeviceFindByName(FDevice);
+  if FSerialDevice = nil then
+    SetSynaError(ErrWrongParameter)
+  else
+    SetSynaError(sOK);
+  ExceptCheck;
+  if FLastError <> sOK then
+    Exit;
+    
+  // Open device  
+  ResultCode := SerialDeviceOpen(FSerialDevice, SERIAL_BAUD_RATE_DEFAULT, SERIAL_DATA_8BIT, SERIAL_STOP_1BIT, SERIAL_PARITY_NONE, SERIAL_FLOW_NONE, FRecvBuffer, FSendBuffer);
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+    SerialCheck(-1)
+  else
+    SerialCheck(0);
+  ExceptCheck;
+  if FLastError <> sOK then
+    Exit;
+    
+  FHandle := THandle(FSerialDevice);
+{$ENDIF}    
 {$ELSE}
   if FComNr <> PortIsClosed then
     FDevice := '\\.\COM' + IntToStr(FComNr + 1);
@@ -987,7 +1060,12 @@ begin
   if not TestCtrlLine then  {HGJ}
   begin
     SetSynaError(ErrNoDeviceAnswer);
+    {$IFDEF ULTIBO}
+    SerialDeviceClose(FSerialDevice);
+    FSerialDevice := nil;
+    {$ELSE}
     FileClose(FHandle);         {HGJ}
+    {$ENDIF}
     {$IFDEF UNIX}
     if FLinuxLock then
       cpomReleaseComport;                {HGJ}
@@ -1012,6 +1090,10 @@ var
   Overlapped: TOverlapped;
   x, y, Err: DWord;
 {$ENDIF}
+{$IFDEF ULTIBO}
+var
+  ResultCode: LongWord;
+{$ENDIF}  
 begin
   Result := 0;
   if PreTestFailing then   {HGJ}
@@ -1023,8 +1105,17 @@ begin
     RTS := True;
   end;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   result := FileWrite(Fhandle, Buffer^, Length);
   serialcheck(result);
+{$ELSE}
+  ResultCode := SerialDeviceWrite(FSerialDevice, buffer, length, SERIAL_WRITE_NONE, LongWord(Result));
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+    SerialCheck(sErr)
+  else
+    SetSynaError(sOK);
+{$ENDIF}    
 {$ELSE}
   FillChar(Overlapped, Sizeof(Overlapped), 0);
   SetSynaError(sOK);
@@ -1126,6 +1217,7 @@ end;
 
 function TBlockSerial.RecvBuffer(buffer: pointer; length: integer): integer;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 begin
   Result := 0;
   if PreTestFailing then   {HGJ}
@@ -1133,6 +1225,21 @@ begin
   LimitBandwidth(Length, FMaxRecvBandwidth, FNextRecv);
   result := FileRead(FHandle, Buffer^, length);
   serialcheck(result);
+{$ELSE}
+var
+  ResultCode: LongWord;
+begin
+  Result := 0;
+  if PreTestFailing then   {HGJ}
+    Exit;                  {HGJ}
+  LimitBandwidth(Length, FMaxRecvBandwidth, FNextRecv);
+  ResultCode := SerialDeviceRead(FSerialDevice, buffer, length, SERIAL_READ_NONE, LongWord(Result));
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+    SerialCheck(sErr)
+  else
+    SetSynaError(sOK);
+{$ENDIF}    
 {$ELSE}
 var
   Overlapped: TOverlapped;
@@ -1449,17 +1556,35 @@ begin
 end;
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 function TBlockSerial.WaitingData: integer;
 begin
-{$IFNDEF FPC}
+  {$IFNDEF FPC}
   serialcheck(ioctl(FHandle, FIONREAD, @result));
-{$ELSE}
+  {$ELSE}
   serialcheck(fpIoctl(FHandle, FIONREAD, @result));
-{$ENDIF}
+  {$ENDIF}
   if FLastError <> 0 then
     Result := 0;
   ExceptCheck;
 end;
+{$ELSE}
+function TBlockSerial.WaitingData: integer;
+var
+  ResultCode: LongWord;
+begin
+  ResultCode := SerialDeviceRead(FSerialDevice, @ResultCode, SizeOf(ResultCode), SERIAL_READ_PEEK_BUFFER, LongWord(Result));
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+  begin
+    SerialCheck(sErr);
+    Result := 0;
+  end  
+  else
+    SetSynaError(sOK);
+  ExceptCheck;
+end;
+{$ENDIF}    
 {$ELSE}
 function TBlockSerial.WaitingData: integer;
 var
@@ -1490,11 +1615,32 @@ begin
 end;
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 function TBlockSerial.SendingData: integer;
 begin
   SetSynaError(sOK);
   Result := 0;
 end;
+{$ELSE}
+function TBlockSerial.SendingData: integer;
+var
+  ResultCode: LongWord;
+begin
+  ResultCode := SerialDeviceWrite(FSerialDevice, @ResultCode, SizeOf(ResultCode), SERIAL_WRITE_PEEK_BUFFER, LongWord(Result));
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+  begin
+    SerialCheck(sErr);
+    Result := 0;
+  end  
+  else
+  begin
+    SetSynaError(sOK);
+    Result := FSendBuffer - Result;
+  end;  
+  ExceptCheck;
+end;
+{$ENDIF}    
 {$ELSE}
 function TBlockSerial.SendingData: integer;
 var
@@ -1511,6 +1657,7 @@ end;
 {$ENDIF}
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 procedure TBlockSerial.DcbToTermios(const dcb: TDCB; var term: termios);
 var
   n: integer;
@@ -1539,11 +1686,11 @@ begin
     6:
       term.c_cflag := term.c_cflag or CS6;
     7:
-{$IFDEF FPC}
+  {$IFDEF FPC}
       term.c_cflag := term.c_cflag or CS7;
-{$ELSE}
+  {$ELSE}
       term.c_cflag := term.c_cflag or CS7fix;
-{$ENDIF}
+  {$ENDIF}
     8:
       term.c_cflag := term.c_cflag or CS8;
   end;
@@ -1631,15 +1778,74 @@ begin
   else
     dcb.stopbits := 0;
 end;
+{$ENDIF}    
 {$ENDIF}
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 procedure TBlockSerial.SetCommState;
 begin
   DcbToTermios(dcb, termiosstruc);
   SerialCheck(tcsetattr(FHandle, TCSANOW, termiosstruc));
   ExceptCheck;
 end;
+{$ELSE}
+procedure TBlockSerial.SetCommState;
+var
+  ResultCode: LongWord;
+  Properties: TSerialProperties;
+begin
+  FillChar(Properties, SizeOf(TSerialProperties), 0);
+  
+  // Baud Rate
+  Properties.BaudRate := DCB.BaudRate;
+  
+  // Data bits
+  Properties.DataBits := SERIAL_DATA_8BIT;
+  case DCB.ByteSize of
+    7: Properties.DataBits := SERIAL_DATA_7BIT;
+    6: Properties.DataBits := SERIAL_DATA_6BIT;
+    5: Properties.DataBits := SERIAL_DATA_5BIT;
+  end;
+
+  // Stop Bits
+  Properties.StopBits := SERIAL_STOP_1BIT;
+  case DCB.StopBits of
+    2: Properties.StopBits := SERIAL_STOP_2BIT;
+    1: Properties.StopBits := SERIAL_STOP_1BIT5;
+  end;
+  
+  // Parity
+  Properties.Parity := SERIAL_PARITY_NONE;
+  case DCB.Parity of
+    1: Properties.Parity := SERIAL_PARITY_ODD;
+    2: Properties.Parity := SERIAL_PARITY_EVEN;
+    3: Properties.Parity := SERIAL_PARITY_MARK;
+    4: Properties.Parity := SERIAL_PARITY_SPACE;
+  end;
+  
+  // Flow Control
+  Properties.FlowControl := SERIAL_FLOW_NONE;
+  if (DCB.Flags and dcb_RtsControlHandshake) <> 0 then
+    Properties.FlowControl := SERIAL_FLOW_RTS_CTS
+  else if (DCB.Flags and dcb_DtrControlHandshake) <> 0 then 
+    Properties.FlowControl := SERIAL_FLOW_DSR_DTR;
+  
+  // Receive and Send Buffer
+  Properties.ReceiveDepth := FRecvBuffer;
+  Properties.TransmitDepth := FSendBuffer;
+  
+  // Set device properties
+  ResultCode := SerialDeviceSetProperties(FSerialDevice, @Properties);
+  
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+    SerialCheck(sErr)
+  else
+    SetSynaError(sOK);
+  ExceptCheck;
+end;
+{$ENDIF}    
 {$ELSE}
 procedure TBlockSerial.SetCommState;
 begin
@@ -1651,12 +1857,69 @@ end;
 {$ENDIF}
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 procedure TBlockSerial.GetCommState;
 begin
   SerialCheck(tcgetattr(FHandle, termiosstruc));
   ExceptCheck;
   TermiostoDCB(termiosstruc, dcb);
 end;
+{$ELSE}
+procedure TBlockSerial.GetCommState;
+var
+  ResultCode: LongWord;
+  Properties: TSerialProperties;
+begin
+  ResultCode := SerialDeviceGetProperties(FSerialDevice, @Properties);
+  SetLastError(ResultCode);
+  if ResultCode <> ERROR_SUCCESS then
+    SerialCheck(sErr)
+  else
+  begin
+    SetSynaError(sOK);
+   
+    // Get DCB 
+    DCB.DCBlength := SizeOf(Tdcb);
+    
+    // Baud Rate
+    DCB.BaudRate :=  Properties.BaudRate;
+    
+    // Flags
+    DCB.Flags := 0;
+    if Properties.Parity <> SERIAL_PARITY_NONE then
+      DCB.Flags := DCB.Flags or dcb_ParityCheck;
+    if Properties.FlowControl = SERIAL_FLOW_RTS_CTS then
+      DCB.Flags := DCB.Flags or dcb_RtsControlHandshake or dcb_OutxCtsFlow
+    else if Properties.FlowControl = SERIAL_FLOW_DSR_DTR then
+      DCB.Flags := DCB.Flags or dcb_DtrControlHandshake or dcb_OutxDsrFlow;
+    
+    // Data Bits
+    case Properties.DataBits of
+      SERIAL_DATA_8BIT: DCB.ByteSize := 8;
+      SERIAL_DATA_7BIT: DCB.ByteSize := 7;
+      SERIAL_DATA_6BIT: DCB.ByteSize := 6;
+      SERIAL_DATA_5BIT: DCB.ByteSize := 5;
+    end;
+    
+    // Parity
+    case Properties.Parity of
+      SERIAL_PARITY_NONE: DCB.Parity := 0;
+      SERIAL_PARITY_ODD: DCB.Parity := 1;
+      SERIAL_PARITY_EVEN: DCB.Parity := 2;
+      SERIAL_PARITY_MARK: DCB.Parity := 3;
+      SERIAL_PARITY_SPACE: DCB.Parity := 4;
+    end;
+    
+    // Stop Bits
+    case Properties.StopBits of
+      SERIAL_STOP_1BIT: DCB.StopBits := 0;
+      SERIAL_STOP_2BIT: DCB.StopBits := 2;
+      SERIAL_STOP_1BIT5: DCB.StopBits := 1;
+    end;
+  end;  
+  ExceptCheck;
+end;
+{$ENDIF}    
 {$ELSE}
 procedure TBlockSerial.GetCommState;
 begin
@@ -1679,11 +1942,22 @@ begin
   FRecvBuffer := size;
 end;
 
+{$IFDEF ULTIBO}
+procedure TBlockSerial.SetSizeSendBuffer(size: integer);
+begin
+  FSendBuffer := size;
+end;
+{$ENDIF}
+
 function TBlockSerial.GetDSR: Boolean;
 begin
   ModemStatus;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   Result := (FModemWord and TIOCM_DSR) > 0;
+{$ELSE}
+  Result := (FModemWord and SERIAL_STATUS_DSR) <> 0;
+{$ENDIF}    
 {$ELSE}
   Result := (FModemWord and MS_DSR_ON) > 0;
 {$ENDIF}
@@ -1692,6 +1966,7 @@ end;
 procedure TBlockSerial.SetDTRF(Value: Boolean);
 begin
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   ModemStatus;
   if Value then
     FModemWord := FModemWord or TIOCM_DTR
@@ -1704,6 +1979,12 @@ begin
   {$ENDIF}
 {$ELSE}
   if Value then
+    SerialDeviceSetStatus(FSerialDevice, SerialDeviceGetStatus(FSerialDevice) or SERIAL_STATUS_DTR)
+  else
+    SerialDeviceSetStatus(FSerialDevice, SerialDeviceGetStatus(FSerialDevice) and not(SERIAL_STATUS_DTR));
+{$ENDIF}    
+{$ELSE}
+  if Value then
     EscapeCommFunction(FHandle, SETDTR)
   else
     EscapeCommFunction(FHandle, CLRDTR);
@@ -1714,7 +1995,11 @@ function TBlockSerial.GetCTS: Boolean;
 begin
   ModemStatus;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   Result := (FModemWord and TIOCM_CTS) > 0;
+{$ELSE}
+  Result := (FModemWord and SERIAL_STATUS_CTS) <> 0;
+{$ENDIF}    
 {$ELSE}
   Result := (FModemWord and MS_CTS_ON) > 0;
 {$ENDIF}
@@ -1723,6 +2008,7 @@ end;
 procedure TBlockSerial.SetRTSF(Value: Boolean);
 begin
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   ModemStatus;
   if Value then
     FModemWord := FModemWord or TIOCM_RTS
@@ -1735,6 +2021,12 @@ begin
   {$ENDIF}
 {$ELSE}
   if Value then
+    SerialDeviceSetStatus(FSerialDevice, SerialDeviceGetStatus(FSerialDevice) or SERIAL_STATUS_RTS)
+  else
+    SerialDeviceSetStatus(FSerialDevice, SerialDeviceGetStatus(FSerialDevice) and not(SERIAL_STATUS_RTS));
+{$ENDIF}    
+{$ELSE}
+  if Value then
     EscapeCommFunction(FHandle, SETRTS)
   else
     EscapeCommFunction(FHandle, CLRRTS);
@@ -1745,7 +2037,11 @@ function TBlockSerial.GetCarrier: Boolean;
 begin
   ModemStatus;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   Result := (FModemWord and TIOCM_CAR) > 0;
+{$ELSE}
+  Result := (FModemWord and SERIAL_STATUS_DCD) <> 0;
+{$ENDIF}    
 {$ELSE}
   Result := (FModemWord and MS_RLSD_ON) > 0;
 {$ENDIF}
@@ -1755,7 +2051,11 @@ function TBlockSerial.GetRing: Boolean;
 begin
   ModemStatus;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   Result := (FModemWord and TIOCM_RNG) > 0;
+{$ELSE}
+  Result := (FModemWord and SERIAL_STATUS_RI) <> 0;
+{$ENDIF}    
 {$ELSE}
   Result := (FModemWord and MS_RING_ON) > 0;
 {$ENDIF}
@@ -1798,6 +2098,7 @@ end;
 {$ENDIF}
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 function TBlockSerial.CanRead(Timeout: integer): boolean;
 var
   FDSet: TFDSet;
@@ -1829,6 +2130,26 @@ begin
 end;
 {$ELSE}
 function TBlockSerial.CanRead(Timeout: integer): boolean;
+var
+  Count: LongWord;
+begin
+  Result := WaitingData > 0;
+  if not Result then
+  begin
+    if Timeout <> 0 then
+    begin
+      if Timeout = -1 then
+        Result := SerialDeviceWait(FSerialDevice, SERIAL_WAIT_RECEIVE, INFINITE, Count) = ERROR_SUCCESS
+      else
+        Result := SerialDeviceWait(FSerialDevice, SERIAL_WAIT_RECEIVE, Timeout, Count) = ERROR_SUCCESS;
+    end;  
+  end;  
+  if Result then
+    DoStatus(HR_CanRead, '');
+end;
+{$ENDIF}    
+{$ELSE}
+function TBlockSerial.CanRead(Timeout: integer): boolean;
 begin
   Result := WaitingData > 0;
   if not Result then
@@ -1840,6 +2161,7 @@ end;
 {$ENDIF}
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 function TBlockSerial.CanWrite(Timeout: integer): boolean;
 var
   FDSet: TFDSet;
@@ -1869,6 +2191,26 @@ begin
   if Result then
     DoStatus(HR_CanWrite, '');
 end;
+{$ELSE}
+function TBlockSerial.CanWrite(Timeout: integer): boolean;
+var
+  Count: LongWord;
+begin
+  Result := SendingData < FSendBuffer;
+  if not Result then
+  begin
+    if Timeout <> 0 then
+    begin
+      if Timeout = -1 then
+        Result := SerialDeviceWait(FSerialDevice, SERIAL_WAIT_TRANSMIT, INFINITE, Count) = ERROR_SUCCESS
+      else
+        Result := SerialDeviceWait(FSerialDevice, SERIAL_WAIT_TRANSMIT, Timeout, Count) = ERROR_SUCCESS;
+    end;  
+  end;  
+  if Result then
+    DoStatus(HR_CanWrite, '');
+end;
+{$ENDIF}    
 {$ELSE}
 function TBlockSerial.CanWrite(Timeout: integer): boolean;
 var
@@ -1906,9 +2248,15 @@ procedure TBlockSerial.EnableRTSToggle(Value: boolean);
 begin
   SetSynaError(sOK);
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   FRTSToggle := Value;
   if Value then
     RTS:=False;
+{$ELSE}
+  FRTSToggle := Value;
+  if Value then
+    RTS:=False;
+{$ENDIF}    
 {$ELSE}
   if Win32Platform = VER_PLATFORM_WIN32_NT then
   begin
@@ -1931,7 +2279,15 @@ end;
 procedure TBlockSerial.Flush;
 begin
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   SerialCheck(tcdrain(FHandle));
+{$ELSE}
+  SetSynaError(sOK);
+  while SendingData > 0 do
+  begin
+   Sleep(0);
+  end;
+{$ENDIF}    
 {$ELSE}
   SetSynaError(sOK);
   if not Flushfilebuffers(FHandle) then
@@ -1941,6 +2297,7 @@ begin
 end;
 
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 procedure TBlockSerial.Purge;
 begin
   {$IFNDEF FPC}
@@ -1955,6 +2312,18 @@ begin
   FBuffer := '';
   ExceptCheck;
 end;
+{$ELSE}
+procedure TBlockSerial.Purge;
+begin
+  SetSynaError(sOK);
+  if SerialDeviceFlush(FSerialDevice, SERIAL_FLUSH_RECEIVE or SERIAL_FLUSH_TRANSMIT) <> ERROR_SUCCESS then
+  begin
+    SerialCheck(sErr);
+  end;  
+  FBuffer := '';
+  ExceptCheck;
+end;
+{$ENDIF}    
 {$ELSE}
 procedure TBlockSerial.Purge;
 var
@@ -1973,11 +2342,16 @@ function TBlockSerial.ModemStatus: integer;
 begin
   Result := 0;
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   {$IFNDEF FPC}
   SerialCheck(ioctl(FHandle, TIOCMGET, @Result));
   {$ELSE}
   SerialCheck(fpioctl(FHandle, TIOCMGET, @Result));
   {$ENDIF}
+{$ELSE}
+  SetSynaError(sOK);
+  Result:=SerialDeviceStatus(FSerialDevice);
+{$ENDIF}    
 {$ELSE}
   SetSynaError(sOK);
   if not GetCommModemStatus(FHandle, dword(Result)) then
@@ -1990,7 +2364,11 @@ end;
 procedure TBlockSerial.SetBreak(Duration: integer);
 begin
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
   SerialCheck(tcsendbreak(FHandle, Duration));
+{$ELSE}
+  //To Do //Ultibo //SerialDeviceSetBreak/ClearBreak to be implemented
+{$ENDIF}    
 {$ELSE}
   SetCommBreak(FHandle);
   Sleep(Duration);
@@ -2104,10 +2482,14 @@ begin
 {$IFDEF MSWINDOWS}
     result := GetLastError
 {$ELSE}
-  {$IFNDEF FPC}
+  {$IFDEF ULTIBO}
     result := GetLastError
   {$ELSE}
-    result := fpGetErrno
+    {$IFNDEF FPC}
+      result := GetLastError
+    {$ELSE}
+      result := fpGetErrno
+    {$ENDIF}
   {$ENDIF}
 {$ENDIF}
   else
@@ -2216,12 +2598,12 @@ begin
     end;
     // Allow all users to enjoy the benefits of cpom
     s := 'chmod a+rw ' + LockfileName;
-{$IFNDEF FPC}
+  {$IFNDEF FPC}
     FileSetReadOnly( LockfileName, False ) ;
- // Libc.system(pchar(s));
-{$ELSE}
+    // Libc.system(pchar(s));
+  {$ELSE}
     fpSystem(s);
-{$ENDIF}
+  {$ENDIF}
   except
     // not raise exception, if you not have write permission for lock.
     on Exception do
@@ -2318,6 +2700,7 @@ begin
 end;
 {$ENDIF}
 {$IFNDEF MSWINDOWS}
+{$IFNDEF ULTIBO}
 function GetSerialPortNames: string;
 var
   sr : TSearchRec;
@@ -2352,6 +2735,54 @@ begin
   end;
   FindClose(sr);
 end;
+{$ELSE}
+type
+  PSerialCallbackData = ^TSerialCallbackData;
+  TSerialCallbackData = record
+    Count: Integer;
+    Devices: String;
+  end;
+  
+function SerialDeviceCallback(Serial:PSerialDevice;Data:Pointer):LongWord;
+var 
+  SerialCallbackData: PSerialCallbackData;
+begin
+  Result := ERROR_INVALID_PARAMETER;
+  
+  if Serial = nil then Exit;
+  if Data = nil then Exit;
+ 
+  //Get data
+  SerialCallbackData := PSerialCallbackData(Data);
+ 
+  //Increment count
+  Inc(SerialCallbackData.Count);
+  
+  //Add comma
+  if SerialCallbackData.Devices <> '' then
+    SerialCallbackData.Devices := SerialCallbackData.Devices + ',';
+    
+  //Add device name
+  SerialCallbackData.Devices := SerialCallbackData.Devices + DeviceGetName(@Serial.Device);
+  
+  Result:=ERROR_SUCCESS;
+end;
+
+function GetSerialPortNames: string;
+var
+  SerialCallbackData: TSerialCallbackData;
+begin
+  //Setup callback
+  SerialCallbackData.Count := 0;
+  SerialCallbackData.Devices := '';
+  
+  //Perform callback
+  SerialDeviceEnumerate(SerialDeviceCallback, @SerialCallbackData);
+  
+  //Return names
+  Result := SerialCallbackData.Devices;
+end;
+{$ENDIF}
 {$ENDIF}
 
 end.

@@ -64,7 +64,11 @@ interface
 uses
   SyncObjs, SysUtils, Classes,
   synafpc,
+  {$IFNDEF FPC}
   Libc;
+  {$ELSE FPC}
+  libclite;
+  {$ENDIF ~FPC}
 
 function InitSocketInterface(stack: string): Boolean;
 function DestroySocketInterface: Boolean;
@@ -418,6 +422,7 @@ const
   WSATRY_AGAIN = TRY_AGAIN;
   WSANO_RECOVERY = NO_RECOVERY;
   WSANO_DATA = -6;
+  WSABASEERR = 10000;
 
   EAI_BADFLAGS    = -1;   { Invalid value for `ai_flags' field.  }
   EAI_NONAME      = -2;   { NAME or SERVICE is unknown.  }
@@ -1214,7 +1219,7 @@ begin
     begin
       SockEnhancedApi := False;
       SockWship6Api := False;
-      Libc.Signal(Libc.SIGPIPE, TSignalHandler(Libc.SIG_IGN));
+      Signal(SIGPIPE, TSignalHandler(SIG_IGN));
       LibHandle := LoadLibrary(PChar(Stack));
       if LibHandle <> 0 then
       begin

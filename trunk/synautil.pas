@@ -1,4 +1,4 @@
-{==============================================================================|
+ï»¿{==============================================================================|
 | Project : Ararat Synapse                                       | 004.015.007 |
 |==============================================================================|
 | Content: support procedures and functions                                    |
@@ -69,24 +69,28 @@ uses
 {$IFDEF MSWINDOWS}
   Windows,
 {$ELSE MSWINDOWS}
-  {$IFDEF FPC}
-    {$IFDEF OS2}
-    Dos, TZUtil,
-    {$ELSE OS2}
-    UnixUtil, Unix, BaseUnix,
-    {$ENDIF OS2}
-  {$ELSE FPC}
-    {$IFDEF POSIX}
-      Posix.Base, Posix.Time, Posix.SysTypes, Posix.SysTime, Posix.Stdio,
-    {$ELSE}
-      Libc,
+  {$IFDEF ULTIBO}
+    Ultibo,
+  {$ELSE} 
+    {$IFDEF FPC}
+      {$IFDEF OS2}
+      Dos, TZUtil,
+      {$ELSE OS2}
+      UnixUtil, Unix, BaseUnix,
+      {$ENDIF OS2}
+    {$ELSE FPC}
+      {$IFDEF POSIX}
+        Posix.Base, Posix.Time, Posix.SysTypes, Posix.SysTime, Posix.Stdio,
+      {$ELSE}
+        Libc,
+      {$ENDIF}
     {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 {$IFDEF CIL}
   System.IO,
 {$ENDIF}
-  SysUtils, Classes, SynaFpc;
+  SysUtils, Classes, SynaFpc, synabyte;
 
 {$IFDEF VER100}
 type
@@ -137,7 +141,7 @@ function GetTimeFromStr(Value: string): TDateTime;
 
 {:Decode string representation of TimeZone (CEST, GMT, +0200, -0800, etc.)
  to timezone offset.} 
-function DecodeTimeZone(Value: string; var Zone: integer): Boolean;
+function DecodeTimeZone(const Value: string; var Zone: integer): Boolean;
 
 {:Decode string in format "m-d-y" to TDateTime type.}
 function GetDateMDYFromStr(Value: string): TDateTime;
@@ -179,33 +183,33 @@ function TickDelta(TickOld, TickNew: LongWord): LongWord;
 
 {:Return two characters, which ordinal values represents the value in byte
  format. (High-endian)}
-function CodeInt(Value: Word): Ansistring;
+function CodeInt(Value: Word): string;
 
 {:Decodes two characters located at "Index" offset position of the "Value"
  string to Word values.}
-function DecodeInt(const Value: Ansistring; Index: Integer): Word;
+function DecodeInt(const Value: string; Index: integer): Word;
 
 {:Return four characters, which ordinal values represents the value in byte
  format. (High-endian)}
-function CodeLongInt(Value: LongInt): Ansistring;
+function CodeLongInt(Value: LongInt): string;
 
 {:Decodes four characters located at "Index" offset position of the "Value"
  string to LongInt values.}
-function DecodeLongInt(const Value: Ansistring; Index: Integer): LongInt;
+function DecodeLongInt(const Value: string; Index: integer): LongInt;
 
 {:Dump binary buffer stored in a string to a result string.}
-function DumpStr(const Buffer: Ansistring): string;
+function DumpStr(const Buffer: string): string;
 
 {:Dump binary buffer stored in a string to a result string. All bytes with code
  of character is written as character, not as hexadecimal value.}
-function DumpExStr(const Buffer: Ansistring): string;
+function DumpExStr(const Buffer: string): string;
 
 {:Dump binary buffer stored in a string to a file with DumpFile filename.}
-procedure Dump(const Buffer: AnsiString; DumpFile: string);
+procedure Dump(const Buffer: string; const DumpFile: string);
 
 {:Dump binary buffer stored in a string to a file with DumpFile filename. All
  bytes with code of character is written as character, not as hexadecimal value.}
-procedure DumpEx(const Buffer: AnsiString; DumpFile: string);
+procedure DumpEx(const Buffer: string; const DumpFile: string);
 
 {:Like TrimLeft, but remove only spaces, not control characters!}
 function TrimSPLeft(const S: string): string;
@@ -229,10 +233,10 @@ function SeparateRight(const Value, Delimiter: string): string;
 function GetParameter(const Value, Parameter: string): string;
 
 {:parse value string with elements differed by Delimiter into stringlist.}
-procedure ParseParametersEx(Value, Delimiter: string; const Parameters: TStrings);
+procedure ParseParametersEx(Value: string; const Delimiter: string; const Parameters: TStrings);
 
 {:parse value string with elements differed by ';' into stringlist.}
-procedure ParseParameters(Value: string; const Parameters: TStrings);
+procedure ParseParameters(const Value: string; const Parameters: TStrings);
 
 {:Index of string in stringlist with same beginning as Value is returned.}
 function IndexByBegin(Value: string; const List: TStrings): integer;
@@ -247,7 +251,7 @@ function GetEmailDesc(Value: string): string;
 
 {:Returns a string with hexadecimal digits representing the corresponding values
  of the bytes found in "Value" string.}
-function StrToHex(const Value: Ansistring): string;
+function StrToHex(const Value: string): string;
 
 {:Returns a string of binary "Digits" representing "Value".}
 function IntToBin(Value: Integer; Digits: Byte): string;
@@ -257,12 +261,12 @@ function IntToBin(Value: Integer; Digits: Byte): string;
 function BinToInt(const Value: string): Integer;
 
 {:Parses a URL to its various components.}
-function ParseURL(URL: string; var Prot, User, Pass, Host, Port, Path,
+function ParseURL(const URL: string; var Prot, User, Pass, Host, Port, Path,
   Para: string): string;
 
 {:Replaces all "Search" string values found within "Value" string, with the
  "Replace" string value.}
-function ReplaceString(Value, Search, Replace: AnsiString): AnsiString;
+function ReplaceString(Value: string; const Search, Replace: string): string;
 
 {:It is like RPos, but search is from specified possition.}
 function RPosEx(const Sub, Value: string; From: integer): Integer;
@@ -282,12 +286,12 @@ function FetchEx(var Value: string; const Delimiter, Quotation: string): string;
 
 {:If string is binary string (contains non-printable characters), then is
  returned true.}
-function IsBinaryString(const Value: AnsiString): Boolean;
+function IsBinaryString(const Value: string): Boolean;
 
 {:return position of string terminator in string. If terminator found, then is
  returned in terminator parameter.
  Possible line terminators are: CRLF, LFCR, CR, LF}
-function PosCRLF(const Value: AnsiString; var Terminator: AnsiString): integer;
+function PosCRLF(const Value: string; var Terminator: string): integer;
 
 {:Delete empty strings from end of stringlist.}
 Procedure StringsTrim(const value: TStrings);
@@ -297,7 +301,7 @@ function PosFrom(const SubStr, Value: String; From: integer): integer;
 
 {$IFNDEF CIL}
 {:Increase pointer by value.}
-function IncPoint(const p: pointer; Value: integer): pointer;
+function IncPoint(const p: pbyte; Value: integer): pointer;
 {$ENDIF}
 
 {:Get string between PairBegin and PairEnd. This function respect nesting.
@@ -329,10 +333,14 @@ procedure ListToHeaders(const Value: TStrings);
 function SwapBytes(Value: integer): integer;
 
 {:read string with requested length form stream.}
-function ReadStrFromStream(const Stream: TStream; len: integer): AnsiString;
+function ReadStrFromStream(const Stream: TStream; len: integer): string;
 
 {:write string to stream.}
-procedure WriteStrToStream(const Stream: TStream; Value: AnsiString);
+procedure WriteStrToStream(const Stream: TStream; const Value: string); {$IFDEF UNICODE} overload;{$ENDIF}
+
+{$IFDEF UNICODE}
+procedure WriteStrToStream(const Stream: TStream; const Value: TSynaBytes); overload;
+{$ENDIF}
 
 {:Return filename of new temporary file in Dir (if empty, then default temporary
  directory is used) and with optional filename prefix.}
@@ -340,10 +348,10 @@ function GetTempFile(const Dir, prefix: String): String;
 
 {:Return padded string. If length is greater, string is truncated. If length is
  smaller, string is padded by Pad character.}
-function PadString(const Value: AnsiString; len: integer; Pad: AnsiChar): AnsiString;
+function PadString(const Value: string; len: integer; Pad: char): string;
 
 {:XOR each byte in the strings}
-function XorString(Indata1, Indata2: AnsiString): AnsiString;
+function XorString(const Indata1: string; Indata2: string): string;
 
 {:Read header from "Value" stringlist beginning at "Index" position. If header
  is Splitted into multiple lines, then this procedure de-split it into one line.}
@@ -352,30 +360,32 @@ function NormalizeHeader(Value: TStrings; var Index: Integer): string;
 {pf}
 {:Search for one of line terminators CR, LF or NUL. Return position of the
  line beginning and length of text.}
-procedure SearchForLineBreak(var APtr:PANSIChar; AEtx:PANSIChar; out ABol:PANSIChar; out ALength:integer);
+procedure SearchForLineBreak(var APtr: PChar; AEtx: PChar; out ABol: PChar; out ALength: integer);
 {:Skip both line terminators CR LF (if any). Move APtr position forward.}
-procedure SkipLineBreak(var APtr:PANSIChar; AEtx:PANSIChar);
+procedure SkipLineBreak(var APtr: PChar; AEtx: PChar);
 {:Skip all blank lines in a buffer starting at APtr and move APtr position forward.}
-procedure SkipNullLines                   (var APtr:PANSIChar; AEtx:PANSIChar);
+procedure SkipNullLines(var APtr: PChar; AEtx: PChar);
 {:Copy all lines from a buffer starting at APtr to ALines until empty line
  or end of the buffer is reached. Move APtr position forward).}
-procedure CopyLinesFromStreamUntilNullLine(var APtr:PANSIChar; AEtx:PANSIChar; ALines:TStrings);
+procedure CopyLinesFromStreamUntilNullLine(var APtr: PChar; AEtx: PChar;  ALines: TStrings);
 {:Copy all lines from a buffer starting at APtr to ALines until ABoundary
  or end of the buffer is reached. Move APtr position forward).}
-procedure CopyLinesFromStreamUntilBoundary(var APtr:PANSIChar; AEtx:PANSIChar; ALines:TStrings; const ABoundary:ANSIString);
+procedure CopyLinesFromStreamUntilBoundary(var APtr: PChar; AEtx: PChar;  ALines: TStrings; const ABoundary: string);
 {:Search ABoundary in a buffer starting at APtr.
  Return beginning of the ABoundary. Move APtr forward behind a trailing CRLF if any).}
-function  SearchForBoundary               (var APtr:PANSIChar; AEtx:PANSIChar; const ABoundary:ANSIString): PANSIChar;
+function SearchForBoundary(var APtr: PChar; AEtx: PChar;  const ABoundary: string): PChar;
 {:Compare a text at position ABOL with ABoundary and return position behind the
  match (including a trailing CRLF if any).}
-function  MatchBoundary                   (ABOL,AETX:PANSIChar; const ABoundary:ANSIString): PANSIChar;
+function MatchBoundary(ABol, AEtx: PChar; const ABoundary: string): PChar;
 {:Compare a text at position ABOL with ABoundary + the last boundary suffix
  and return position behind the match (including a trailing CRLF if any).}
-function  MatchLastBoundary               (ABOL,AETX:PANSIChar; const ABoundary:ANSIString): PANSIChar;
+function MatchLastBoundary(ABol, AEtx: PChar; const ABoundary: string): PChar;
 {:Copy data from a buffer starting at position APtr and delimited by AEtx
- position into ANSIString.}
-function  BuildStringFromBuffer           (AStx,AEtx:PANSIChar): ANSIString;
+ position into string. }
+function BuildStringFromBuffer(AStx, AEtx: PChar): string;
 {/pf}
+
+function CompareString(const Str1, Str2: String;  const CaseSensitive: Boolean = false): Boolean;
 
 var
   {:can be used for your own months strings for @link(getmonthnumber)}
@@ -386,7 +396,7 @@ implementation
 {==============================================================================}
 
 const
-  MyDayNames: array[1..7] of AnsiString =
+  MyDayNames: array[1..7] of string =
     ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
 var
   MyMonthNames: array[0..6, 1..12] of String =
@@ -395,23 +405,23 @@ var
      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'),
     ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',  //English
      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'),
-    ('jan', 'fév', 'mar', 'avr', 'mai', 'jun', //French
-     'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'),
+    ('jan', 'fÃ©v', 'mar', 'avr', 'mai', 'jun', //French
+     'jul', 'aoÃ»', 'sep', 'oct', 'nov', 'dÃ©c'),
     ('jan', 'fev', 'mar', 'avr', 'mai', 'jun',  //French#2
      'jul', 'aou', 'sep', 'oct', 'nov', 'dec'),
     ('Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun',  //German
      'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'),
-    ('Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun',  //German#2
+    ('Jan', 'Feb', 'MÃ¤r', 'Apr', 'Mai', 'Jun',  //German#2
      'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'),
-    ('Led', 'Úno', 'Bøe', 'Dub', 'Kvì', 'Èen',  //Czech
-     'Èec', 'Srp', 'Záø', 'Øíj', 'Lis', 'Pro')
+    ('Led', 'Ãšno', 'BÃ¸e', 'Dub', 'KvÃ¬', 'Ãˆen',  //Czech
+     'Ãˆec', 'Srp', 'ZÃ¡Ã¸', 'Ã˜Ã­j', 'Lis', 'Pro')
      );
 
 
 {==============================================================================}
 
 function TimeZoneBias: integer;
-{$IFNDEF MSWINDOWS}
+{$IF NOT(DEFINED(MSWINDOWS)) and NOT(DEFINED(ULTIBO))}
 {$IFNDEF FPC}
 var
 {$IFDEF POSIX}
@@ -512,7 +522,7 @@ end;
 
 {==============================================================================}
 
-function DecodeTimeZone(Value: string; var Zone: integer): Boolean;
+function DecodeTimeZone(const Value: string; var Zone: integer): Boolean;
 var
   x: integer;
   zh, zm: integer;
@@ -602,7 +612,7 @@ end;
 function GetMonthNumber(Value: String): integer;
 var
   n: integer;
-  function TestMonth(Value: String; Index: Integer): Boolean;
+  function TestMonth(const Value: String; Index: Integer): Boolean;
   var
     n: integer;
   begin
@@ -773,7 +783,7 @@ end;
 {==============================================================================}
 
 function GetUTTime: TDateTime;
-{$IFDEF MSWINDOWS}
+{$IF DEFINED(MSWINDOWS) or DEFINED(ULTIBO)}
 {$IFNDEF FPC}
 var
   st: TSystemTime;
@@ -783,7 +793,7 @@ begin
 {$ELSE}
 var
   st: SysUtils.TSystemTime;
-  stw: Windows.TSystemTime;
+  stw: {$IFNDEF ULTIBO}Windows.TSystemTime{$ELSE}Ultibo.SYSTEMTIME{$ENDIF};
 begin
   GetSystemTime(stw);
   st.Year := stw.wYear;
@@ -825,7 +835,7 @@ end;
 {==============================================================================}
 
 function SetUTTime(Newdt: TDateTime): Boolean;
-{$IFDEF MSWINDOWS}
+{$IF DEFINED(MSWINDOWS) or DEFINED(ULTIBO)}
 {$IFNDEF FPC}
 var
   st: TSystemTime;
@@ -835,7 +845,7 @@ begin
 {$ELSE}
 var
   st: SysUtils.TSystemTime;
-  stw: Windows.TSystemTime;
+  stw: {$IFNDEF ULTIBO}Windows.TSystemTime{$ELSE}Ultibo.SYSTEMTIME{$ENDIF};
 begin
   DateTimeToSystemTime(newdt,st);
   stw.wYear := st.Year;
@@ -947,17 +957,17 @@ end;
 
 {==============================================================================}
 
-function CodeInt(Value: Word): Ansistring;
+function CodeInt(Value: Word): string;
 begin
   setlength(result, 2);
-  result[1] := AnsiChar(Value div 256);
-  result[2] := AnsiChar(Value mod 256);
-//  Result := AnsiChar(Value div 256) + AnsiChar(Value mod 256)
+  Result[1] := char(Value div 256);
+  Result[2] := char(Value mod 256);
+// Result := Char(Value div 256) + Char(Value mod 256)
 end;
 
 {==============================================================================}
 
-function DecodeInt(const Value: Ansistring; Index: Integer): Word;
+function DecodeInt(const Value: string; Index: integer): Word;
 var
   x, y: Byte;
 begin
@@ -974,7 +984,7 @@ end;
 
 {==============================================================================}
 
-function CodeLongInt(Value: Longint): Ansistring;
+function CodeLongInt(Value: LongInt): string;
 var
   x, y: word;
 begin
@@ -982,15 +992,15 @@ begin
   x := (Value shr 16) and integer($ffff);
   y := Value and integer($ffff);
   setlength(result, 4);
-  result[1] := AnsiChar(x div 256);
-  result[2] := AnsiChar(x mod 256);
-  result[3] := AnsiChar(y div 256);
-  result[4] := AnsiChar(y mod 256);
+  Result[1] := char(x div 256);
+  Result[2] := char(x mod 256);
+  Result[3] := char(y div 256);
+  Result[4] := char(y mod 256);
 end;
 
 {==============================================================================}
 
-function DecodeLongInt(const Value: Ansistring; Index: Integer): LongInt;
+function DecodeLongInt(const Value: string; Index: integer): LongInt;
 var
   x, y: Byte;
   xl, yl: Byte;
@@ -1016,7 +1026,7 @@ end;
 
 {==============================================================================}
 
-function DumpStr(const Buffer: Ansistring): string;
+function DumpStr(const Buffer: string): string;
 var
   n: Integer;
 begin
@@ -1027,7 +1037,7 @@ end;
 
 {==============================================================================}
 
-function DumpExStr(const Buffer: Ansistring): string;
+function DumpExStr(const Buffer: string): string;
 var
   n: Integer;
   x: Byte;
@@ -1045,7 +1055,7 @@ end;
 
 {==============================================================================}
 
-procedure Dump(const Buffer: AnsiString; DumpFile: string);
+procedure Dump(const Buffer: string; const DumpFile: string);
 var
   f: Text;
 begin
@@ -1062,7 +1072,7 @@ end;
 
 {==============================================================================}
 
-procedure DumpEx(const Buffer: AnsiString; DumpFile: string);
+procedure DumpEx(const Buffer: string; const DumpFile: string);
 var
   f: Text;
 begin
@@ -1090,7 +1100,7 @@ begin
   I := 1;
   while (I <= L) and (S[I] = ' ') do
     Inc(I);
-  Result := Copy(S, I, Maxint);
+  Result := Copy(S, I, MaxInt);
 end;
 
 {==============================================================================}
@@ -1171,7 +1181,8 @@ end;
 
 {==============================================================================}
 
-procedure ParseParametersEx(Value, Delimiter: string; const Parameters: TStrings);
+procedure ParseParametersEx(Value: string; const Delimiter: string; const
+    Parameters: TStrings);
 var
   s: string;
 begin
@@ -1185,7 +1196,7 @@ end;
 
 {==============================================================================}
 
-procedure ParseParameters(Value: string; const Parameters: TStrings);
+procedure ParseParameters(const Value: string; const Parameters: TStrings);
 begin
   ParseParametersEx(Value, ';', Parameters);
 end;
@@ -1248,7 +1259,7 @@ end;
 
 {==============================================================================}
 
-function StrToHex(const Value: Ansistring): string;
+function StrToHex(const Value: string): string;
 var
   n: Integer;
 begin
@@ -1300,7 +1311,7 @@ end;
 
 {==============================================================================}
 
-function ParseURL(URL: string; var Prot, User, Pass, Host, Port, Path,
+function ParseURL(const URL: string; var Prot, User, Pass, Host, Port, Path,
   Para: string): string;
 var
   x, y: Integer;
@@ -1322,9 +1333,17 @@ begin
   end
   else
     sURL := URL;
-  if UpperCase(Prot) = 'HTTPS' then
-    Port := '443';
-  if UpperCase(Prot) = 'FTP' then
+  s := UpperCase(Prot);
+  if s = 'HTTPS' then
+    Port := '443'
+  else
+  if s = 'WS' then
+    Port := '80'
+  else
+  if s = 'WSS' then
+    Port := '443'
+  else
+  if s = 'FTP' then
     Port := '21';
   x := Pos('@', sURL);
   y := Pos('/', sURL);
@@ -1386,7 +1405,7 @@ end;
 
 {==============================================================================}
 
-function ReplaceString(Value, Search, Replace: AnsiString): AnsiString;
+function ReplaceString(Value: string; const Search, Replace: string): string;
 var
   x, l, ls, lr: Integer;
 begin
@@ -1503,15 +1522,15 @@ end;
 
 {==============================================================================}
 
-function IsBinaryString(const Value: AnsiString): Boolean;
+function IsBinaryString(const Value: string): Boolean;
 var
   n: integer;
 begin
   Result := False;
   for n := 1 to Length(Value) do
-    if Value[n] in [#0..#8, #10..#31] then
-      //ignore null-terminated strings
-      if not ((n = Length(value)) and (Value[n] = AnsiChar(#0))) then
+    if CharInSet(Value[n], [#0 .. #8, #10 .. #31]) then
+      // ignore null-terminated strings
+      if not((n = Length(Value)) and (Value[n] = char(#0))) then
       begin
         Result := True;
         Break;
@@ -1520,15 +1539,15 @@ end;
 
 {==============================================================================}
 
-function PosCRLF(const Value: AnsiString; var Terminator: AnsiString): integer;
+function PosCRLF(const Value: string; var Terminator: string): integer;
 var
   n, l: integer;
 begin
   Result := -1;
   Terminator := '';
   l := length(value);
-  for n := 1 to l do
-    if value[n] in [#$0d, #$0a] then
+  for n := 1 to L do
+    if CharInSet(Value[n], [#$0d, #$0a]) then
     begin
       Result := n;
       Terminator := Value[n];
@@ -1590,9 +1609,10 @@ end;
 {==============================================================================}
 
 {$IFNDEF CIL}
-function IncPoint(const p: pointer; Value: integer): pointer;
+function IncPoint(const p: pbyte; Value: integer): pointer;
 begin
-  Result := PAnsiChar(p) + Value;
+  Result := p;
+  Inc(pbyte(Result), Value);
 end;
 {$ENDIF}
 
@@ -1767,7 +1787,7 @@ end;
 
 function SwapBytes(Value: integer): integer;
 var
-  s: AnsiString;
+  S: string;
   x, y, xl, yl: Byte;
 begin
   s := CodeLongInt(Value);
@@ -1780,28 +1800,20 @@ end;
 
 {==============================================================================}
 
-function ReadStrFromStream(const Stream: TStream; len: integer): AnsiString;
+function ReadStrFromStream(const Stream: TStream; len: integer): string;
 var
   x: integer;
-{$IFDEF CIL}
-  buf: Array of Byte;
-{$ENDIF}
+  Buf: TBytes;
 begin
-{$IFDEF CIL}
-  Setlength(buf, Len);
-  x := Stream.read(buf, Len);
-  SetLength(buf, x);
+  Setlength(Buf, Len);
+  x := Stream.Read(Buf, Len);
+  Setlength(Buf, x);
   Result := StringOf(Buf);
-{$ELSE}
-  Setlength(Result, Len);
-  x := Stream.read(PAnsiChar(Result)^, Len);
-  SetLength(Result, x);
-{$ENDIF}
 end;
 
 {==============================================================================}
 
-procedure WriteStrToStream(const Stream: TStream; Value: AnsiString);
+procedure WriteStrToStream(const Stream: TStream; const Value: string);
 {$IFDEF CIL}
 var
   buf: Array of Byte;
@@ -1811,14 +1823,25 @@ begin
   buf := BytesOf(Value);
   Stream.Write(buf,length(Value));
 {$ELSE}
-  Stream.Write(PAnsiChar(Value)^, Length(Value));
+  {$IFDEF UNICODE}
+    Stream.Write(MarshaledAString(TMarshal.AsAnsi(Value))^, Length(Value));
+  {$ELSE}
+    Stream.Write(PAnsiChar(Value)^, Length(Value));
+  {$ENDIF}
 {$ENDIF}
 end;
+
+{$IFDEF UNICODE}
+procedure WriteStrToStream(const Stream: TStream; const Value: TSynaBytes);
+begin
+  stream.WriteData(Value.Bytes, Value.Length);
+end;
+{$ENDIF}
 
 {==============================================================================}
 
 {$IFDEF POSIX}
-function tempnam(const Path: PAnsiChar; const Prefix: PAnsiChar): PAnsiChar; cdecl;
+function tempnam(const Path: PChar; const prefix: PChar): PChar; cdecl;
   external libc name _PU + 'tempnam';
 {$ENDIF}
 
@@ -1843,7 +1866,7 @@ begin
   if Dir = '' then
   begin
     Path := StringOfChar(#0, MAX_PATH);
-	  x := GetTempPath(Length(Path), PChar(Path));
+	  GetTempPath(Length(Path), PChar(Path));
     Path := PChar(Path);
   end
   else
@@ -1862,7 +1885,7 @@ end;
 
 {==============================================================================}
 
-function PadString(const Value: AnsiString; len: integer; Pad: AnsiChar): AnsiString;
+function PadString(const Value: string; len: integer; Pad: char): string;
 begin
   if length(value) >= len then
     Result := Copy(value, 1, len)
@@ -1872,14 +1895,14 @@ end;
 
 {==============================================================================}
 
-function XorString(Indata1, Indata2: AnsiString): AnsiString;
+function XorString(const Indata1: string; Indata2: string): string;
 var
   i: integer;
 begin
   Indata2 := PadString(Indata2, length(Indata1), #0);
   Result := '';
   for i := 1 to length(Indata1) do
-    Result := Result + AnsiChar(ord(Indata1[i]) xor ord(Indata2[i]));
+    Result := Result + char(ord(Indata1[i]) xor ord(Indata2[i]));
 end;
 
 {==============================================================================}
@@ -1900,7 +1923,7 @@ begin
       for n := 1 to Length(t) do
         if t[n] = #9 then
           t[n] := ' ';
-      if not(AnsiChar(t[1]) in [' ', '"', ':', '=']) then
+      if not(CharInSet(char(t[1]), [' ', '"', ':', '='])) then
         Break
       else
       begin
@@ -1914,32 +1937,33 @@ end;
 {==============================================================================}
 
 {pf}
-procedure SearchForLineBreak(var APtr:PANSIChar; AEtx:PANSIChar; out ABol:PANSIChar; out ALength:integer);
+procedure SearchForLineBreak(var APtr: PChar; AEtx: PChar; out ABol: PChar;
+  out ALength: integer);
 begin
   ABol := APtr;
-  while (APtr<AEtx) and not (APtr^ in [#0,#10,#13]) do
-    inc(APtr);
-  ALength := APtr-ABol;
+  while (APtr < AEtx) and not(CharInSet(APtr^, [#0, #10, #13])) do
+    Inc(APtr);
+  ALength := APtr - ABol;
 end;
 {/pf}
 
 {pf}
-procedure SkipLineBreak(var APtr:PANSIChar; AEtx:PANSIChar);
+procedure SkipLineBreak(var APtr: PChar; AEtx: PChar);
 begin
-  if (APtr<AEtx) and (APtr^=#13) then
+  if (APtr < AEtx) and (APtr^ = #13) then
     inc(APtr);
-  if (APtr<AEtx) and (APtr^=#10) then
+  if (APtr < AEtx) and (APtr^ = #10) then
     inc(APtr);
 end;
 {/pf}
 
 {pf}
-procedure SkipNullLines(var APtr:PANSIChar; AEtx:PANSIChar);
+procedure SkipNullLines(var APtr: PChar; AEtx: PChar);
 var
-  bol: PANSIChar;
+  bol: PChar;
   lng: integer;
 begin
-  while (APtr<AEtx) do
+  while (APtr < AEtx) do
     begin
       SearchForLineBreak(APtr,AEtx,bol,lng);
       SkipLineBreak(APtr,AEtx);
@@ -1953,11 +1977,11 @@ end;
 {/pf}
 
 {pf}
-procedure CopyLinesFromStreamUntilNullLine(var APtr:PANSIChar; AEtx:PANSIChar; ALines:TStrings);
+procedure CopyLinesFromStreamUntilNullLine(var APtr: PChar; AEtx: PChar; ALines: TStrings);
 var
-  bol: PANSIChar;
+  bol: PChar;
   lng: integer;
-  s:   ANSIString;
+  s: string;
 begin
   // Copying until body separator will be reached
   while (APtr<AEtx) and (APtr^<>#0) do
@@ -1973,16 +1997,16 @@ end;
 {/pf}
 
 {pf}
-procedure CopyLinesFromStreamUntilBoundary(var APtr:PANSIChar; AEtx:PANSIChar; ALines:TStrings; const ABoundary:ANSIString);
+procedure CopyLinesFromStreamUntilBoundary(var APtr: PChar; AEtx: PChar;  ALines: TStrings; const ABoundary: string);
 var
-  bol:      PANSIChar;
+  bol: PChar;
   lng:      integer;
-  s:        ANSIString;
-  BackStop: ANSIString;
-  eob1:     PANSIChar;
-  eob2:     PANSIChar;
+  s: string;
+  //BackStop: string;
+  eob1: PChar;
+  eob2: PChar;
 begin
-  BackStop := '--'+ABoundary;
+  //BackStop := '--'+ABoundary;
   eob2     := nil;
   // Copying until Boundary will be reached
   while (APtr<AEtx) do
@@ -2012,9 +2036,9 @@ end;
 {/pf}
 
 {pf}
-function SearchForBoundary(var APtr:PANSIChar; AEtx:PANSIChar; const ABoundary:ANSIString): PANSIChar;
+function SearchForBoundary(var APtr: PChar; AEtx: PChar;  const ABoundary: string): PChar;
 var
-  eob:  PANSIChar;
+  eob: PChar;
   Step: integer;
 begin
   Result := nil;
@@ -2049,24 +2073,24 @@ end;
 {/pf}
 
 {pf}
-function MatchBoundary(ABol,AEtx:PANSIChar; const ABoundary:ANSIString): PANSIChar;
+function MatchBoundary(ABol, AEtx: PChar; const ABoundary: string): PChar;
 var
-  MatchPos:   PANSIChar;
+  MatchPos: PChar;
   Lng:        integer;
 begin
   Result   := nil;
   MatchPos := ABol;
   Lng := length(ABoundary);
-  if (MatchPos+2+Lng)>AETX then
+  if (MatchPos + 2 + lng) > AEtx then
     exit;
-  if strlcomp(MatchPos,#13#10,2)=0 then
+  if strlcomp(MatchPos, #13#10, 2) = 0 then
     inc(MatchPos,2);
-  if (MatchPos+2+Lng)>AETX then
+  if (MatchPos + 2 + lng) > AEtx then
     exit;
   if strlcomp(MatchPos,'--',2)<>0 then
     exit;
   inc(MatchPos,2);
-  if strlcomp(MatchPos,PANSIChar(ABoundary),Lng)<>0 then
+  if strlcomp(MatchPos, PChar(ABoundary), lng) <> 0 then
     exit;
   inc(MatchPos,Lng);
   if ((MatchPos+2)<=AEtx) and (strlcomp(MatchPos,#13#10,2)=0) then
@@ -2076,12 +2100,12 @@ end;
 {/pf}
 
 {pf}
-function MatchLastBoundary(ABOL,AETX:PANSIChar; const ABoundary:ANSIString): PANSIChar;
+function MatchLastBoundary(ABol, AEtx: PChar; const ABoundary: string): PChar;
 var
-  MatchPos: PANSIChar;
+  MatchPos: PChar;
 begin
   Result   := nil;
-  MatchPos := MatchBoundary(ABOL,AETX,ABoundary);
+  MatchPos := MatchBoundary(ABol, AEtx, ABoundary);
   if not Assigned(MatchPos) then
     exit;
   if strlcomp(MatchPos,'--',2)<>0 then
@@ -2094,7 +2118,7 @@ end;
 {/pf}
 
 {pf}
-function  BuildStringFromBuffer(AStx,AEtx:PANSIChar): ANSIString;
+function BuildStringFromBuffer(AStx, AEtx: PChar): string;
 var
   lng: integer;
 begin
@@ -2110,7 +2134,14 @@ end;
 {/pf}
 
 
-
+function CompareString(const Str1, Str2: String;
+  const CaseSensitive: Boolean = false): Boolean;
+begin
+  if not CaseSensitive then
+    Result := Pos(LowerCase(Str1), LowerCase(Str2)) > 0
+  else
+    Result := Pos(Str1, Str2) > 0;
+end;
 
 {==============================================================================}
 var

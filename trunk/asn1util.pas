@@ -285,6 +285,7 @@ begin
   l := Length(Buffer);
   if l < (Start + 1) then
     Exit;
+  s := '';
   ASNType := Ord(Buffer[Start]);
   ValueType := ASNType;
   Inc(Start);

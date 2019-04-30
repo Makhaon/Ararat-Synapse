@@ -276,6 +276,9 @@ begin
   inherited Create;
   FSock := TICMPBlockSocket.Create;
   FSock.Owner := self;
+  {$IFDEF ULTIBO}
+  FSock.UseConnect := True; //Connect is needed for the ICMP handler to find the matching
+  {$ENDIF}                  //socket on receive if multiple pings occur are sent at once.
   FTimeout := 5000;
   FPacketSize := 32;
   FSeq := 0;
@@ -333,8 +336,10 @@ begin
 end;
 
 function TPINGSend.Ping(const Host: string): Boolean;
+{$IFDEF MSWINDOWS}
 var
   b: boolean;
+{$ENDIF}
 begin
   FPingTime := -1;
   FReplyFrom := '';
@@ -477,12 +482,14 @@ const
   IOC_INOUT = (IOC_IN or IOC_OUT);
   IOC_WS2 = $08000000;
   SIO_ROUTING_INTERFACE_QUERY = 20 or IOC_WS2 or IOC_INOUT;
+{$IFDEF MSWINDOWS}
 var
   ICMP6Ptr: ^TICMP6Packet;
   s: AnsiString;
   b: integer;
   ip6: TSockAddrIn6;
   x: integer;
+{$ENDIF}  
 begin
   Result := 0;
 {$IFDEF MSWINDOWS}

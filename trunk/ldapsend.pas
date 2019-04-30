@@ -148,7 +148,6 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-  published
     {:Name of this LDAP object.}
     property ObjectName: AnsiString read FObjectName write FObjectName;
     {:Here is list of object attributes.}
@@ -348,7 +347,7 @@ type
   end;
 
 {:Dump result of LDAP SEARCH into human readable form. Good for debugging.}
-function LDAPResultDump(const Value: TLDAPResultList): AnsiString;
+function LDAPResultDump(const Value: TLDAPResultList): string;
 
 implementation
 
@@ -359,11 +358,19 @@ begin
   Put(Result,S);
 end;
 
+function StrToHex(const s: string):string;
+var
+  i: Integer;
+begin
+  for i := Low(s) to High(s) do
+   Result := Result + Ord(s[i]).ToHexString + ' ';
+end;
+
 function TLDAPAttribute.Get(Index: integer): string;
 begin
   Result := inherited Get(Index);
   if FIsbinary then
-    Result := DecodeBase64(Result);
+    Result := StrToHex(Result);
 end;
 
 procedure TLDAPAttribute.Put(Index: integer; const Value: string);
@@ -381,7 +388,7 @@ end;
 procedure TLDAPAttribute.SetAttributeName(Value: AnsiString);
 begin
   FAttributeName := Value;
-  FIsBinary := Pos(';binary', Lowercase(value)) > 0;
+  FIsBinary := (Pos(';binary', Lowercase(value)) > 0) or (FAttributeName = 'objectGUID')  or (FAttributeName = 'objectSid');
 end;
 
 {==============================================================================}
@@ -1236,7 +1243,7 @@ begin
 end;
 
 {==============================================================================}
-function LDAPResultDump(const Value: TLDAPResultList): AnsiString;
+function LDAPResultDump(const Value: TLDAPResultList): string;
 var
   n, m, o: integer;
   r: TLDAPResult;

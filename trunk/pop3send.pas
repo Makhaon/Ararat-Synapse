@@ -231,7 +231,7 @@ end;
 
 function TPOP3Send.ReadResult(Full: Boolean): Integer;
 var
-  s: AnsiString;
+  s: string;
 begin
   Result := 0;
   FFullResult.Clear;

@@ -57,6 +57,12 @@
   {$ENDIF}
 {$ENDIF}
 
+{$IFDEF POSIX}
+  {$IFNDEF UNIX}
+    {$DEFINE UNIX}
+  {$ENDIF}
+{$ENDIF}
+
 {$TYPEDADDRESS OFF}
 
 {$IFDEF UNICODE}
@@ -78,14 +84,26 @@ interface
 
 uses
   synautil, blcksock, SysUtils, Classes
-{$IFDEF UNIX}
+{$IFDEF POSIX}
+  ,Types,Posix.Stdlib
+{$ELSE}
+  {$IFDEF UNIX}
   {$IFNDEF FPC}
   , Libc
   {$ENDIF}
 {$ELSE}
-  , Windows
+  {$IFDEF ULTIBO}
+    , GlobalConst, Iphlpapi
+  {$ELSE}
+    , Windows
+  {$ENDIF}
 {$ENDIF}
 ;
+
+
+const
+  lIPV4 = 1;
+  lIPV6 = 2;
 
 Type
   {:@abstract(This record contains information about proxy settings.)}
@@ -115,7 +133,8 @@ function GetIEProxy(protocol: string): TProxySetting;
 
 {:Return all known IP addresses on the local system. Addresses are divided by 
 comma/comma-delimited.}
-function GetLocalIPs: string;
+procedure GetLocalIPs(iplist: TStrings; ipfamily: Integer); overload;
+function GetLocalIPs: string; overload
 
 implementation
 
@@ -123,8 +142,8 @@ implementation
 procedure WakeOnLan(MAC, IP: string);
 var
   sock: TUDPBlockSocket;
-  HexMac: Ansistring;
-  data: Ansistring;
+  HexMac: string;
+  data: string;
   n: integer;
   b: Byte;
 begin
@@ -161,6 +180,29 @@ end;
 
 {$IFNDEF UNIX}
 function GetDNSbyIpHlp: string;
+{$IFDEF ULTIBO}
+var
+  InfoSize: DWORD;
+  FixedInfo: TFixedInfo;
+  PDnsServer: PIP_ADDR_STRING;
+  ResultCode: DWORD;
+begin
+  Result:='';
+  
+  InfoSize:=SizeOf(TFixedInfo);
+  ResultCode:=GetNetworkParams(@FixedInfo,InfoSize);
+  if ResultCode <> ERROR_SUCCESS then Exit;
+  
+  Result:=FixedInfo.DnsServerList.IpAddress.S;
+  PDnsServer:=FixedInfo.DnsServerList.Next;
+  while PDnsServer <> nil do
+   begin
+    if Result <> '' then Result:=Result + ',';
+    Result:=Result + PDnsServer^.IPAddress.S;
+    PDnsServer:=PDnsServer.Next;
+   end;
+end;
+{$ELSE}
 type
   PTIP_ADDRESS_STRING = ^TIP_ADDRESS_STRING;
   TIP_ADDRESS_STRING = array[0..15] of Ansichar;
@@ -249,8 +291,14 @@ begin
    end;
 end ;
 {$ENDIF}
+{$ENDIF}
 
 function GetDNS: string;
+{$IFDEF ULTIBO}
+begin
+  Result := GetDNSbyIpHlp;
+end;
+{$ELSE}
 {$IFDEF UNIX}
 var
   l: TStringList;
@@ -294,10 +342,18 @@ begin
   end;
 end;
 {$ENDIF}
+{$ENDIF}
 
 {==============================================================================}
 
 function GetIEProxy(protocol: string): TProxySetting;
+{$IFDEF ULTIBO}
+begin
+  Result.Host := '';
+  Result.Port := '';
+  Result.Bypass := '';
+end;
+{$ELSE}
 {$IFDEF UNIX}
 begin
   Result.Host := '';
@@ -380,8 +436,25 @@ begin
   end;
 end;
 {$ENDIF}
+{$ENDIF}
 
 {==============================================================================}
+
+procedure GetLocalIPs(iplist: TStrings; ipfamily: Integer);
+var
+  TcpSock: TTCPBlockSocket;
+begin
+    TcpSock := TTCPBlockSocket.create;
+    case ipfamily of
+      1 : TcpSock.family:=SF_IP4;
+      2 : TcpSock.family:=SF_IP6;
+    end;
+    try
+      TcpSock.ResolveNameToIP(TcpSock.LocalName, ipList);
+    finally
+      TcpSock.Free;
+    end;
+end;
 
 function GetLocalIPs: string;
 var
@@ -392,6 +465,7 @@ begin
   ipList := TStringList.Create;
   try
     TcpSock := TTCPBlockSocket.create;
+    TcpSock.family:=SF_IP4;
     try
       TcpSock.ResolveNameToIP(TcpSock.LocalName, ipList);
       Result := ipList.CommaText;

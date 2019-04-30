@@ -303,6 +303,9 @@ begin
   FErrorCode := 0;
   FErrorString := '';
   FSock.CloseSocket;
+  {$IFDEF ULTIBO}
+  FSock.EnableReuse(True); //Closed socket is not destroyed immediately, need to allow port reuse
+  {$ENDIF}
   FSock.Bind('0.0.0.0', FTargetPort);
   if FSock.LastError = 0 then
   begin
@@ -327,6 +330,10 @@ var
   s: string;
 begin
   FSock.CloseSocket;
+  {$IFDEF ULTIBO}
+  FSock.EnableReuse(True);            //Closed socket is not destroyed immediately, need to allow port reuse
+  FSock.Bind('0.0.0.0', FTargetPort); //Some clients (eg Windows) only accept replies from the port they sent to
+  {$ENDIF}
   FSock.Connect(FRequestIP, FRequestPort);
   s := CodeInt(5) + CodeInt(Error) + Description + #0;
   FSock.SendString(s);
@@ -342,6 +349,10 @@ begin
   FErrorCode := 0;
   FErrorString := '';
   FSock.CloseSocket;
+  {$IFDEF ULTIBO}
+  FSock.EnableReuse(True);            //Closed socket is not destroyed immediately, need to allow port reuse
+  FSock.Bind('0.0.0.0', FTargetPort); //Some clients (eg Windows) only accept replies from the port they sent to
+  {$ENDIF}
   FSock.Connect(FRequestIP, FRequestPort);
   try
     s := CodeInt(4) + CodeInt(0);
@@ -372,6 +383,10 @@ begin
   FErrorCode := 0;
   FErrorString := '';
   FSock.CloseSocket;
+  {$IFDEF ULTIBO}
+  FSock.EnableReuse(True);            //Closed socket is not destroyed immediately, need to allow port reuse
+  FSock.Bind('0.0.0.0', FTargetPort); //Some clients (eg Windows) only accept replies from the port they sent to
+  {$ENDIF}
   FSock.Connect(FRequestIP, FRequestPort);
   try
     ser := 1;

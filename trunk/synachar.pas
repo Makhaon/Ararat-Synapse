@@ -84,6 +84,9 @@ uses
 {$ELSE}
   Windows,
 {$ENDIF}
+{$IFDEF ULTIBO}
+  Locale,
+{$ENDIF}
   SysUtils,
   synautil, synacode, synaicnv;
 
@@ -211,7 +214,7 @@ function NeedCharsetConversion(const Value: AnsiString): Boolean;
 
 {:Finding best target charset from set of TMimeChars with minimal count of
  unconvertible characters.}
-function IdealCharsetCoding(const Value: AnsiString; CharFrom: TMimeChar;
+function IdealCharsetCoding(const Value: string; CharFrom: TMimeChar;
   CharTo: TMimeSetChar): TMimeChar;
 
 {:Return BOM (Byte Order Mark) for given unicode charset.}
@@ -1496,7 +1499,7 @@ begin
 end;
 
 {==============================================================================}
-{$IFNDEF MSWINDOWS}
+{$IF NOT(DEFINED(MSWINDOWS)) and NOT(DEFINED(ULTIBO))}
 
 function GetCurCP: TMimeChar;
 begin
@@ -1698,7 +1701,7 @@ begin
 end;
 
 {==============================================================================}
-function IdealCharsetCoding(const Value: AnsiString; CharFrom: TMimeChar;
+function IdealCharsetCoding(const Value: string; CharFrom: TMimeChar;
   CharTo: TMimeSetChar): TMimeChar;
 var
   n: Integer;
