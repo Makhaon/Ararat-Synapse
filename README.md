@@ -7,7 +7,7 @@ Improved version of the great Synapse library, fixes:
 - SockCheck and ExceptCheck added, it works in Linux more stable
 - GetSendTimeout and SetSendTimeout added
 - Added different exception classes to improve processing
-- LastError processed processing improved
+- LastError processing improved
 - TBlockSocket.CanWrite rewritten
 - Added FPC compilation defines
 - Buffers changed from AnsiString to TSynaBytes and TBytes and from PAnsiChar to PByte
