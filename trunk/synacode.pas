@@ -216,7 +216,7 @@ function Crc16(const Value: String): Word;
 function MD5(const Value: String): String;
 
 {:Returns a binary string with HMAC-MD5 hash.}
-function HMAC_MD5(Text, Key: String): String;
+function HMAC_MD5(const Text: String; Key: String): String;
 
 {:Returns a binary string with a RSA-MD5 hashing of string what is constructed
  by repeating "value" until length is "Len".}
@@ -226,7 +226,7 @@ function MD5LongHash(const Value: String; Len: integer): String;
 function SHA1(const Value: String): String;
 
 {:Returns a binary string with HMAC-SHA1 hash.}
-function HMAC_SHA1(Text, Key: String): String;
+function HMAC_SHA1(const Text: String; Key: String): String;
 
 {:Returns a binary string with a SHA-1 hashing of string what is constructed
  by repeating "value" until length is "Len".}
@@ -1112,7 +1112,7 @@ end;
 
 {==============================================================================}
 
-function HMAC_MD5(Text, Key: String): String;
+function HMAC_MD5(const Text: String; Key: String): String;
 var
   ipad, opad, s: String;
   n: Integer;
@@ -1340,7 +1340,7 @@ end;
 
 {==============================================================================}
 
-function HMAC_SHA1(Text, Key: String): String;
+function HMAC_SHA1(const Text: String; Key: String): String;
 var
   ipad, opad, s: String;
   n: Integer;

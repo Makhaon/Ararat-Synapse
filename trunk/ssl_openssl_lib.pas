@@ -90,6 +90,7 @@ uses
 {$ENDIF}
   Classes,
   synafpc,
+  synabyte,
 {$IFNDEF MSWINDOWS}
   {$IFDEF FPC}
    {$IFDEF UNIX}
@@ -137,6 +138,10 @@ var
   DLLSSLName: string = 'ssleay32.dll';
   DLLSSLName2: string = 'libssl32.dll';
   DLLUtilName: string = 'libeay32.dll';
+
+  DLL_LIBCRYPTO_1_1: string = 'libcrypto-1_1.dll';
+  DLL_LIBSSL_1_1: string = 'libssl-1_1.dll';
+
   {$ENDIF}
 {$ENDIF}
 
@@ -1507,7 +1512,7 @@ end;
 function SslGetVersion(ssl: PSSL):string;
 begin
   if InitSSLInterface {$IFNDEF STATIC}and Assigned(_SslGetVersion){$ENDIF} then
-    Result := StringOf(_SslGetVersion(ssl))
+    Result := synabyte.StringOf(_SslGetVersion(ssl))
   else
     Result := '';
 end;
@@ -1542,7 +1547,7 @@ end;
 function SSLCipherGetName(c: SslPtr):string;
 begin
   if InitSSLInterface {$IFNDEF STATIC}and Assigned(_SSLCipherGetName){$ENDIF} then
-    Result := StringOf(_SSLCipherGetName(c))
+    Result := synabyte.StringOf(_SSLCipherGetName(c))
   else
     Result := '';
 end;
@@ -1591,7 +1596,7 @@ end;
 function X509NameOneline(a: PX509_NAME; buf: PByte; size: Integer): string;
 begin
   if InitSSLInterface {$IFNDEF STATIC}and Assigned(_X509NameOneline){$ENDIF} then
-    Result := StringOf(_X509NameOneline(a, buf,size))
+    Result := synabyte.StringOf(_X509NameOneline(a, buf,size))
   else
     Result := '';
 end;
@@ -1654,7 +1659,15 @@ end;
 function SSLeayversion(t: integer): string;
 begin
   if InitSSLInterface {$IFNDEF STATIC}and Assigned(_SSLeayversion){$ENDIF} then
-    Result := StringOf(_SSLeayversion(t))
+    Result := synabyte.StringOf(_SSLeayversion(t))
+  else
+    Result := '';
+end;
+
+function OpenSSLversion(t: integer): string;
+begin
+  if InitSSLInterface {$IFNDEF STATIC}and Assigned(_OpenSSLversion){$ENDIF} then
+    Result := synabyte.StringOf(_OpenSSLversion(t))
   else
     Result := '';
 end;
@@ -2079,7 +2092,10 @@ begin
       Result := TRUE;
       exit;
     end;
-  {/pf}  
+  {/pf}
+  Result := False;
+  if SSLCS = nil then
+    Exit;  
   SSLCS.Enter;
   try
     if not IsSSLloaded then
@@ -2088,18 +2104,25 @@ begin
       SSLLibHandle := 1;
       SSLUtilHandle := 1;
 {$ELSE}
-{$IFDEF STATIC}
-      SSLLibHandle := 1;
-      SSLUtilHandle := 1;
-{$ELSE}
+
+    {$IFDEF MSWINDOWS}
+      SSLUtilHandle := LoadLib(DLL_LIBCRYPTO_1_1);
+      SSLLibHandle := LoadLib(DLL_LIBSSL_1_1);
+
+      if (SSLUtilHandle = 0) or (SSLLibHandle = 0) then
+      begin
+        FreeLibrary(SSLLibHandle);
+        FreeLibrary(SSLUtilHandle);
+        
+        SSLUtilHandle := LoadLib(DLLUtilName);
+        SSLLibHandle := LoadLib(DLLSSLName);
+        if (SSLLibHandle = 0) then
+          SSLLibHandle := LoadLib(DLLSSLName2);
+      end;
+    {$ELSE}
       SSLUtilHandle := LoadLib(DLLUtilName);
       SSLLibHandle := LoadLib(DLLSSLName);
-  {$IFDEF MSWINDOWS}
-      if (SSLLibHandle = 0) then
-        SSLLibHandle := LoadLib(DLLSSLName2);
-  {$ENDIF}
-{$ENDIF}
-
+    {$ENDIF}
 {$ENDIF}
       if (SSLLibHandle <> 0) and (SSLUtilHandle <> 0) then
       begin

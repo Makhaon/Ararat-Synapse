@@ -844,7 +844,7 @@ begin
   FLines.Clear;
   FLines.Assign(AHeader);
   FHeader.DecodeHeaders(FLines);
-  FMessagePart.DecomposePartsBinary(AHeader,PANSIChar(AData.Memory),PANSIChar(AData.Memory)+AData.Size);
+  FMessagePart.DecomposePartsBinary(AHeader,PChar(AData.Memory),PChar(AData.Memory)+AData.Size);
 end;
 {/pf}
 

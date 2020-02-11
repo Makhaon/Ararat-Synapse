@@ -344,7 +344,7 @@ procedure WriteStrToStream(const Stream: TStream; const Value: TSynaBytes); over
 
 {:Return filename of new temporary file in Dir (if empty, then default temporary
  directory is used) and with optional filename prefix.}
-function GetTempFile(const Dir, prefix: String): String;
+function GetTempFile(const Dir, prefix: TFileName): TFileName;
 
 {:Return padded string. If length is greater, string is truncated. If length is
  smaller, string is padded by Pad character.}
@@ -537,8 +537,8 @@ begin
     else
       if Length(s) > 4 then
       begin
-        zh := StrToIntdef(s[2] + s[3], 0);
-        zm := StrToIntdef(s[4] + s[5], 0);
+        zh := StrToIntDef(s[2] + s[3], 0);
+        zm := StrToIntDef(s[4] + s[5], 0);
         zone := zh * 60 + zm;
         if s[1] = '-' then
           zone := zone * (-1);
@@ -1322,7 +1322,9 @@ begin
   Prot := 'http';
   User := '';
   Pass := '';
-  Port := '80';
+  Host := '';
+  Port := '';
+  Path := '';
   Para := '';
 
   x := Pos('://', URL);
@@ -1334,6 +1336,9 @@ begin
   else
     sURL := URL;
   s := UpperCase(Prot);
+  if s = 'HTTP' then
+    Port := '80'
+  else
   if s = 'HTTPS' then
     Port := '443'
   else
@@ -1845,11 +1850,11 @@ function tempnam(const Path: PChar; const prefix: PChar): PChar; cdecl;
   external libc name _PU + 'tempnam';
 {$ENDIF}
 
-function GetTempFile(const Dir, prefix: String): String;
+function GetTempFile(const Dir, prefix: TFileName): TFileName;
 {$IFNDEF FPC}
 {$IFDEF MSWINDOWS}
 var
-  Path: String;
+  Path: TFileName;
   x: integer;
 {$ENDIF}
 {$ENDIF}

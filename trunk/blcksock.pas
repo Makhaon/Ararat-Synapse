@@ -137,10 +137,15 @@ type
    When you enable generating of exceptions, this exception is raised by
    Synapse's units.}
   ESocketBindError = class(Exception);
+
+  { ESynapseError }
+
   ESynapseError = class(Exception)
   private
     FErrorCode: Integer;
     FErrorMessage: string;
+  public
+    constructor CreateErrorCode(AErrorCode:Integer; const AErrorDesc: string);
   published
     {:Code of error. Value depending on used operating system}
     property ErrorCode: Integer read FErrorCode Write FErrorCode;
@@ -148,6 +153,7 @@ type
     property ErrorMessage: string read FErrorMessage Write FErrorMessage;
   end;
 
+  ESynProtocolError = class(ESynapseError);
   EResetByPeer = class (ESynapseError);
   ECouldNotBindSocket = class (ESynapseError);
   EConnectionResetByPeer = class (ESynapseError);
@@ -922,8 +928,8 @@ type
     FSocksRemotePort: string;
     FBypassFlag: Boolean;
     FSocksType: TSocksType;
-    function SocksCode(IP, Port: string): string;
-    function SocksDecode(Value: string): integer;
+    function SocksCode(IP: string; const Port: string): string;
+    function SocksDecode(const Value: string): integer;
   public
     constructor Create;
 
@@ -1258,24 +1264,9 @@ type
   TCustomSSL = class(TObject)
   private
     FOnVerifyCert: THookVerifyCert;
-    FSocket: TTCPBlockSocket;
-    FSSLEnabled: Boolean;
-    FLastError: integer;
-    FLastErrorDesc: string;
-    FSSLType: TSSLType;
-    FKeyPassword: string;
-    FCiphers: string;
-    FCertificateFile: string;
-    FPrivateKeyFile: string;
-    FCertificate: string;
-    FPrivateKey: string;
-    FPFX: string;
-    FPFXfile: string;
     FCertCA: string;
-    FCertCAFile: string;
     FTrustCertificate: string;
     FTrustCertificateFile: string;
-    FVerifyCert: Boolean;
     FUsername: string;
     FPassword: string;
     FSSHChannelType: string;
@@ -1286,6 +1277,21 @@ type
     procedure ReturnError;
     procedure SetCertCAFile(const Value: string); virtual;
   protected
+    FCiphers: string;
+    FPrivateKey: string;
+    FSSLEnabled: Boolean;
+    FSocket: TTCPBlockSocket;
+    FKeyPassword: string;
+    FSSLType: TSSLType;
+    FVerifyCert: Boolean;
+    FCertificateFile: string;
+    FCertCAFile: string;
+    FPFXfile: string;
+    FPFX: string;
+    FPrivateKeyFile: string;
+    FLastErrorDesc: string;
+    FLastError: integer;
+    FCertificate: string;
     function DoVerifyCert:boolean;
     function CreateSelfSignedCert(Host: string): Boolean; virtual;
   public
@@ -1555,6 +1561,20 @@ implementation
 var
   WsaDataOnce: TWSADATA;
   e: ESynapseError;
+
+{ ESynapseError }
+
+constructor ESynapseError.CreateErrorCode(AErrorCode: Integer;
+  const AErrorDesc: string);
+var
+  Z: string;
+begin
+  Z := SysUtils.Trim(AErrorDesc);
+  inherited Create(Z);
+  FErrorCode := AErrorCode;
+  FErrorMessage := Z;
+end;
+
 {$ENDIF}
 
 
@@ -3590,7 +3610,7 @@ begin
   end;
 end;
 
-function TSocksBlockSocket.SocksCode(IP, Port: string): string;
+function TSocksBlockSocket.SocksCode(IP: string; const Port: string): string;
 var
   ip6: TIp6Bytes;
   n: integer;
@@ -3632,7 +3652,7 @@ begin
   end;
 end;
 
-  function TSocksBlockSocket.SocksDecode(Value: string): Integer;
+  function TSocksBlockSocket.SocksDecode(const Value: string): integer;
 var
   Atyp: Byte;
   y, n: integer;

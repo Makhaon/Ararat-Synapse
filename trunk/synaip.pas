@@ -95,7 +95,7 @@ function IpToStr(value: integer): string;
 function ReverseIP(Value: String): String;
 
 {:Convert IPv6 address to reverse form.}
-function ReverseIP6(Value: String): String;
+function ReverseIP6(const Value: String): String;
 
 {:Expand short form of IPv6 address to long form.}
 function ExpandIP6(Value: String): String;
@@ -400,7 +400,7 @@ begin
 end;
 
 {==============================================================================}
-function ReverseIP6(Value: String): String;
+function ReverseIP6(const Value: String): String;
 var
   ip6: TIp6bytes;
   n: integer;

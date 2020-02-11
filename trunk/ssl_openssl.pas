@@ -93,6 +93,7 @@ interface
 uses
   SysUtils, Classes,
   blcksock, synsock, synautil,
+  synabyte,
 {$IFDEF CIL}
   System.Text,
 {$ENDIF}
@@ -111,7 +112,7 @@ type
     function Init(server:Boolean): Boolean;
     function DeInit: Boolean;
     function Prepare(server:Boolean): Boolean;
-    function LoadPFX(pfxdata: ansistring): Boolean;
+    function LoadPFX(pfxdata: TSynaBytes): Boolean;
     function CreateSelfSignedCert(Host: string): Boolean; override;
   public
     {:See @inherited}
@@ -221,6 +222,8 @@ function TSSLOpenSSL.SSLCheck: Boolean;
 var
 {$IFDEF CIL}
   sb: StringBuilder;
+{$ELSE}
+  se: integer;
 {$ENDIF}
   s : TSynabytes;
 begin
@@ -236,9 +239,23 @@ begin
     ErrErrorString(FLastError, sb, 256);
     FLastErrorDesc := Trim(sb.ToString);
 {$ELSE}
-    s := StringOfChar(#0, 256);
-    ErrErrorString(FLastError, s, Length(s));
-    FLastErrorDesc := s;
+    //{$IFDEF WIN???}
+      if FLastError = SSL_ERROR_SYSCALL then
+      begin
+        se := WSAGetLastError();
+        FLastErrorDesc := '#sslErr:' + SysUtils.IntToStr(FLastError)
+            + ' #sysErr:' + SysUtils.IntToStr(se)
+            + ' ' + string(TBlockSocket.GetErrorDesc(se))  // cast
+      end;
+    //{$ELSE}
+    //{$ENDIF}
+    if FLastErrorDesc = '' then
+    begin
+      s := StringOfChar(AnsiChar(#0), 256);
+      ErrErrorString(FLastError, s, Length(s));
+      FLastErrorDesc := '#sslErr:' + SysUtils.IntToStr(FLastError)
+          + ' ' + string(s); // cast
+    end
 {$ENDIF}
   end;
 end;

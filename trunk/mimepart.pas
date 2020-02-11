@@ -217,7 +217,7 @@ type
      This method operates the similiar way and produces the same
      result as @link(DecomposeParts).
     }
-    procedure DecomposePartsBinary(AHeader:TStrings; AStx,AEtx:PANSIChar);
+    procedure DecomposePartsBinary(AHeader:TStrings; AStx,AEtx:PChar);
     {/pf}
 
     {:This part and all subparts is composed into one MIME message stored in
@@ -641,13 +641,13 @@ begin
   end;
 end;
 
-procedure TMIMEPart.DecomposePartsBinary(AHeader:TStrings; AStx,AEtx:PANSIChar);
+procedure TMIMEPart.DecomposePartsBinary(AHeader:TStrings; AStx,AEtx:PChar);
 var
   x:    integer;
   s:    ANSIString;
   Mime: TMimePart;
-  BOP:  PANSIChar; // Beginning of Part
-  EOP:  PANSIChar; // End of Part
+  BOP:  PChar; // Beginning of Part
+  EOP:  PChar; // End of Part
 
   function ___HasUUCode(ALines:TStrings): boolean;
   var
