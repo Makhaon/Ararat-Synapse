@@ -72,6 +72,7 @@ type
     procedure Unique;
   public
     class operator Implicit(const V1: String): TSynaBytes;
+    class operator Implicit(const V1: RawByteString): TSynaBytes;
     class operator Implicit(const V1: TSynaBytes): String;
     class operator Implicit(const V1: Char): TSynaBytes;
     class operator Explicit(const V1: TBytes): TSynaBytes;
@@ -130,12 +131,9 @@ begin
 end;
 
 class operator TSynaBytes.Implicit(const V1: String): TSynaBytes;
-var
-  I: Integer;
 begin
-  Result.Length := System.Length(V1);
-  for I := 1 to System.Length(V1) do
-    Result.FBytes[I-1] := Byte(V1[I]);//warning: null-terminated strings!
+  Result.FBytes := TEncoding.Default.GetBytes(V1);
+  Result.Length := System.Length(Result.FBytes);
 end;
  
 class operator TSynaBytes.Add(const V1, V2: TSynaBytes): TSynaBytes;
@@ -202,8 +200,8 @@ end;
 
 class operator TSynaBytes.Explicit(const V1: TBytes): TSynaBytes;
 begin
+  Result.FBytes := Copy(V1);
   Result.Length := System.Length(V1);
-  Move(V1[0], Result.FBytes[0], Result.Length);
 end;
 
 function TSynaBytes.GetChars(const Index: NativeInt): Char;
@@ -221,8 +219,17 @@ end;
 
 class operator TSynaBytes.Implicit(const V1: Char): TSynaBytes;
 begin
-  Result.Length := 1;
-  Result.FBytes[0] := Byte(V1);
+  Result.FBytes := TEncoding.Default.GetBytes(V1);
+  Result.Length := System.Length(Result.FBytes);
+end;
+
+class operator TSynaBytes.Implicit(const V1: RawByteString): TSynaBytes;
+var
+  I: Integer;
+begin
+  Result.Length := System.Length(V1);
+  for I := 1 to System.Length(V1) do
+    Result.FBytes[I-1] := Byte(V1[I]);//warning: null-terminated strings!
 end;
 
 class operator TSynaBytes.Implicit(const V1: TSynaBytes): String;
