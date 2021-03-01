@@ -81,6 +81,7 @@ uses
     {$ELSE FPC}
       {$IFDEF POSIX}
         Posix.Base, Posix.Time, Posix.SysTypes, Posix.SysTime, Posix.Stdio,
+        Posix.Unistd,
       {$ELSE}
         Libc,
       {$ENDIF}

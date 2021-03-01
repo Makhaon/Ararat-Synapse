@@ -396,7 +396,7 @@ type
     HashByte: array[0..19] of byte;
   end;
 
-  TMDTransform = procedure(var Buf: array of LongInt; const Data: array of LongInt);
+  TMDTransform = procedure(var Buf: array of Integer; const Data: array of Integer);
 
 {==============================================================================}
 

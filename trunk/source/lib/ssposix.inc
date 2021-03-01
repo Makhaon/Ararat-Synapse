@@ -48,6 +48,8 @@
 {$IFDEF POSIX}
 {for delphi XE2+}
 
+{$WARN SYMBOL_PLATFORM OFF}
+
 //{$DEFINE FORCEOLDAPI}
 {Note about define FORCEOLDAPI:
 If you activate this compiler directive, then is allways used old socket API
